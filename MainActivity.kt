@@ -20,68 +20,31 @@ import android.widget.Button
 import android.widget.ImageView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import java.lang.Exception
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
-import java.util.concurrent.locks.ReentrantLock
 
-var g_lock = ReentrantLock()
-var g_buf = ByteBuffer.allocate(0)
+var con_width = 2244
+var con_height = 2244
 
-class thrSock : Thread() {
-    var bb = ByteBuffer.allocate(0)
-    @RequiresApi(Build.VERSION_CODES.N)
-    override fun run()
-    {
-        var ser = ServerSocketChannel.open()
-        var add = InetSocketAddress("0.0.0.0",8899)
-        ser.bind(add)
-        while (true)
-        {
-            try {
-                var cli = ser.accept()
-                var jj = ByteBuffer.allocate(16)
-                var rr = cli.read(jj)
-                jj.flip()
-                jj.order(ByteOrder.nativeOrder())
-                var xbegin = jj.getInt()
-                var ybegin = jj.getInt()
-                var xlen = jj.getInt()
-                var ylen = jj.getInt()
-                g_lock.lock()
-                bb = ByteBuffer.allocate(xlen*ylen*4)
-                for(j in ybegin until ybegin+ylen)
-                {
-                    var startPos = xbegin+j*2244
-                    var endPos = xbegin+j*2244+xlen
-                    bb.put(g_buf.array().slice(startPos*4 until endPos*4).toByteArray())
-                }
-                g_lock.unlock()
-                println(cli)
-                bb.flip()
-                cli.write(bb)
-                cli.close()
-            }
 
-            catch (e:Exception)
-            {
-                e.printStackTrace()
-            }
-        }
-    }
-}
 class thr : Thread() {
     lateinit var upper: MainActivity
     lateinit var mResultData: Intent
     var mMediaProjection: MediaProjection? = null
     var mVirtualDisplay: VirtualDisplay? = null
-    var mImageReader: ImageReader? = null
-    var mScreenWidth = 0
-    var mScreenHeight = 0
+    lateinit var mImageReader: ImageReader
+    var mScreenWidth = con_width
+    var mScreenHeight = con_height
     var mScreenDensity = 0
-    lateinit var bitmap: Bitmap
+
+    fun q() {
+        stopVirtual()
+        tearDownMediaProjection()
+    }
 
     @SuppressLint("WrongConstant")
     @RequiresApi(Build.VERSION_CODES.KITKAT)
@@ -146,30 +109,32 @@ class thr : Thread() {
     }
 
     @RequiresApi(Build.VERSION_CODES.KITKAT)
-    private fun startCapture() {
-        var image: Image? = null
-        var co = 0
-        while (true) {
-            image = mImageReader!!.acquireLatestImage()
-            if (image != null) {
-                break
-            }
-            Thread.sleep(10)
-            co += 1
-        }
-        println("count ${co}")
+    fun getBitmap(image: Image): Bitmap {
+        val width = image.width
+        val height = image.height
+        val planes = image.planes
+        val buffer = planes[0].buffer
+        val pixelStride = planes[0].pixelStride
+        val rowStride = planes[0].rowStride
+        val rowPadding = rowStride - pixelStride * width
+        var bitmap =
+            Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
+        bitmap.copyPixelsFromBuffer(buffer)
+        bitmap = Bitmap.createBitmap(bitmap!!, 0, 0, width, height)
+        return bitmap
+    }
 
-        if (image != null) {
-            bitmap = getBitmap(image)
-            val imageSize = bitmap.rowBytes * bitmap.height
-            val uncompressedBuffer =
-                ByteBuffer.allocateDirect(imageSize)
-            bitmap.copyPixelsToBuffer(uncompressedBuffer)
-            uncompressedBuffer.position(0)
+    @RequiresApi(Build.VERSION_CODES.KITKAT)
+    fun startCapture(): Bitmap {
+        while (true) {
+            var image = mImageReader.acquireLatestImage()
+            if (image == null) {
+                Thread.sleep(10)
+                continue
+            }
+            var b = getBitmap(image)
             image.close()
-            g_lock.lock()
-            g_buf = uncompressedBuffer
-            g_lock.unlock()
+            return b;
         }
     }
 
@@ -178,53 +143,115 @@ class thr : Thread() {
         createImageReader()
         Thread.sleep(1000)
         startVirtual()
+        var ser = ServerSocketChannel.open()
+        var add = InetSocketAddress("0.0.0.0", 8899)
+        ser.bind(add)
+        var maxWaitTime = 5000
         while (true) {
-            startCapture()
-            upper.runOnUiThread({upper.showImg(bitmap)})
+            try {
+                var cli = ser.accept()
+                var beginTime = System.currentTimeMillis()
+
+                cli.configureBlocking(false)
+                var selector = Selector.open()
+                cli.register(selector, SelectionKey.OP_READ)
+                selector.select(maxWaitTime+1000.toLong())
+                selector.close()
+                if (System.currentTimeMillis()-beginTime>maxWaitTime)
+                {
+                    cli.close()
+                    continue
+                }
+                var jj = ByteBuffer.allocate(16)
+                var rr = cli.read(jj)
+                if(rr!=16)
+                {
+                    cli.close()
+                    continue
+                }
+                jj.flip()
+                jj.order(ByteOrder.nativeOrder())
+                var xbegin = jj.getInt()
+                var ybegin = jj.getInt()
+                var xlen = jj.getInt()
+                var ylen = jj.getInt()
+                var bitmap = startCapture()
+                upper.runOnUiThread({ upper.showImg(bitmap) })
+                val imageSize = bitmap.rowBytes * bitmap.height
+                val uncompressedBuffer =
+                    ByteBuffer.allocateDirect(imageSize)
+                bitmap.copyPixelsToBuffer(uncompressedBuffer)
+                uncompressedBuffer.position(0)
+                var bb = ByteBuffer.allocate(xlen * ylen * 4)
+                for (j in ybegin until ybegin + ylen) {
+                    var startPos = xbegin + j * 2244
+                    var endPos = xbegin + j * 2244 + xlen
+                    bb.put( uncompressedBuffer.array().slice(startPos * 4 until endPos * 4).toByteArray()
+                    )
+                }
+                bb.flip()
+                var si = bb.array().size
+                var co=0
+                selector = Selector.open()
+                while (co!=si&&System.currentTimeMillis()-beginTime<maxWaitTime)
+                {
+                    cli.register(selector,SelectionKey.OP_WRITE)
+                    selector.select(maxWaitTime+1000.toLong())
+                    co += cli.write(bb)
+                }
+                selector.close()
+                cli.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
 
-
 class MainActivity : AppCompatActivity() {
     lateinit var ii: Intent
+    var worker = thr()
+
     @SuppressLint("ServiceCast")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == Activity.RESULT_OK && requestCode == 1000) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                if (data != null) {
-                    ii = Intent(this@MainActivity, myServ::class.java)
-                    startService(ii)
-                    var tSo = thrSock()
-                    tSo.isDaemon = true
-                    tSo.start()
-                    var t = thr()
-                    t.upper = this
-                    var a = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                    val metrics = DisplayMetrics()
-                    a.getDefaultDisplay().getMetrics(metrics)
-                    t.mScreenDensity = metrics.densityDpi
-                    t.mScreenWidth = metrics.widthPixels
-                    t.mScreenHeight = metrics.heightPixels
-                    t.mScreenHeight = 2244
-                    t.mScreenWidth = 2244
-                    t.mResultData = data.clone() as Intent
-                    t.isDaemon = true
-                    t.start()
-                }
-            }
+        if (requestCode != 1) {
+            return
         }
+        if (resultCode != Activity.RESULT_OK) {
+            System.exit(0)
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || data == null) {
+            System.exit(0)
+        }
+        if (data != null) {
+            ii = Intent(this@MainActivity, myServ::class.java)
+            startService(ii)
+            worker.upper = this
+            var a = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val metrics = DisplayMetrics()
+            a.getDefaultDisplay().getMetrics(metrics)
+            worker.mScreenDensity = metrics.densityDpi
+            worker.mResultData = data.clone() as Intent
+            worker.isDaemon = true
+            worker.start()
+        }
+    }
+
+    fun q() {
+        worker.q()
+        stopService(ii)
+        System.exit(0)
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        findViewById<Button>(R.id.button).setOnClickListener { System.exit(0) }
+        findViewById<Button>(R.id.button).setOnClickListener { q() }
         var projectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        startActivityForResult(projectionManager.createScreenCaptureIntent(), 1000)
+        startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
     }
 
     fun showImg(b: Bitmap) {
