@@ -12,7 +12,7 @@
 #include "qcursor.h"
 #include "QDesktopWidget"
 #include "QSettings"
-#include "qnetwork.h"
+
 #include "QtNetwork/qtcpsocket.h"
 #include "QHBoxLayout"
 #include "qpushbutton.h"
@@ -85,7 +85,7 @@ public:
     {
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("10.23.185.230",8899);
+        s->connectToHost("192.168.1.110",8899);
         s->waitForConnected();
         g_lock.lock();
         auto te = g_para;
@@ -255,8 +255,16 @@ QImage lastDrawIm;
     }
     void  paintEvent(QPaintEvent* e)
     {
+int xx=xLen; int yy=yLen;
+if(reso>0)
+{
+    if(xx>maxX/reso)xx=maxX/reso;
+    if(yy>maxY/reso)yy=maxY/reso;
+}
         g_lock.lock();
-        g_para = para(xStart,yStart,xLen,yLen);
+
+        g_para = para(xStart,yStart,xx,yy);
+
         auto da=g_buf.buf;auto xLenB = g_buf.x;auto yLenB = g_buf.y;int si=g_buf.si;
         g_lock.unlock();
         if(lastDrawId==si && lastDrawReso==reso)
@@ -320,6 +328,14 @@ QImage lastDrawIm;
 public slots:
     void onT()
     {
+        bool j=false;
+        g_lock.lock();
+        if(lastDrawId==g_buf.si && lastDrawReso==reso)
+        {
+             j = true;
+        }
+        g_lock.unlock();
+        if (j) return;
         repaint();
     }
 
