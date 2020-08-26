@@ -1,12 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-
-#include <QMainWindow>
 #include <QPaintEvent>
-#include <qt_windows.h>
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "qtimer.h"
 #include "qdebug.h"
 #include "qdatetime.h"
@@ -22,17 +17,40 @@
 #include "QHBoxLayout"
 #include "qpushbutton.h"
 #include "qlineedit.h"
+#include "qcoreapplication.h"
+#include "qmutex.h"
+#include "qthread.h"
 
+class para
+{
+public:
+    int a=1000,b=100,c=100,d=100;
+    para(){}
+    para(int q,int w,int e,int r){a=q;b=w;c=e;d=r;}
+};
+class bu
+{
+public:
+    QByteArray buf;
+    int x,y,si;
+    bu(){}
+    bu(QByteArray a,int b,int c,int d){buf=a;x=b;y=c,si=d;}
+};
 
+extern int xCapLen;
+extern int yCapLen ;
+extern int drawP1;
+extern int drawP2 ;
+extern int maxX ;
+extern int maxY ;
+extern QMutex g_lock;
+extern para g_para;
+extern bu g_buf;
 
-namespace Ui {
-class MainWindow;
-}
 
 class myLine : public QLineEdit
 {
     Q_OBJECT
-
 signals:
     void wh();
 
@@ -50,30 +68,72 @@ public:
     }
 };
 
+class qthr:public QThread
+{
+    Q_OBJECT
+public:
+    int co=0;
+
+    qthr():QThread(){}
+    void run()
+    {
+        while (1) {
+            w();
+        }
+    }
+    void w()
+    {
+        co++;
+        QTcpSocket* s = new QTcpSocket();
+        s->connectToHost("10.23.185.230",8899);
+        s->waitForConnected();
+        g_lock.lock();
+        auto te = g_para;
+        g_lock.unlock();
+        QByteArray a;
+        a.append((char*)&te.a,4);
+        a.append((char*)&te.b,4);
+        a.append((char*)&te.c,4);
+        a.append((char*)&te.d,4);
+        s->write(a.data(),a.size());
+        s->waitForBytesWritten();
+
+        a.clear();
+        while (1) {
+            s->waitForReadyRead();
+            auto x = s->readAll();
+            if(x.size()==0)break;
+            a.append(x);
+        }
+        s->deleteLater();
+        if(a.size()!=te.c*te.d*4)return;
+
+        g_lock.lock();
+        g_buf.buf = a;
+        g_buf.x = te.c;
+        g_buf.y = te.d;
+        g_buf.si = co;
+        g_lock.unlock();
+    }
+};
+
 
 class MainWindow : public QWidget
 {
     Q_OBJECT
 public:
-    QTcpSocket* sock=nullptr;
-    Ui::MainWindow *ui;
-    int   xLen = 2244,
-    yLen = 2244,
-    xS = 800,
-    yS = 800,
-    yL = 50 ,
-    xL = 50  ,
-    xS2=xS,yS2=yS,xL2=xL,yL2=yL,
-    drawP1 = 0,
-    drawP2 = 50,
-    maxX = 1366,
-    maxY = 768;
-    QByteArray data;
-    QImage pic;
+
+    qthr * q;
+    int xStart = g_para.a;
+    int yStart = g_para.b;
+    int xLen  = g_para.c;
+    int yLen = g_para.d;
     bool pause = false;
     int reso = 0;
     myLine *l1,*l2,*l3,*l4,*l5;
-
+    int lastDrawId = -1;
+    int lastDrawReso = 0;
+QImage lastDrawIm;
     explicit MainWindow(QWidget *parent = nullptr)
     {
 
@@ -88,10 +148,10 @@ public:
         QPushButton *p = new QPushButton("set");
         connect(p, SIGNAL(clicked()), this, SLOT(onCli()));
 
-        l1 = new myLine(QString::number(xS));
-        l2 = new myLine(QString::number(yS));
-        l3 = new myLine(QString::number(xL));
-        l4 = new myLine(QString::number(yL));
+        l1 = new myLine(QString::number(xStart));
+        l2 = new myLine(QString::number(yStart));
+        l3 = new myLine(QString::number(xLen));
+        l4 = new myLine(QString::number(yLen));
         l5 = new myLine(QString::number(reso));
         connect(l1, SIGNAL(wh()), this, SLOT(onCli()));
         connect(l2, SIGNAL(wh()), this, SLOT(onCli()));
@@ -108,6 +168,9 @@ public:
         v->addLayout(h);
         v->addStretch();
         this->setLayout(v);
+        q = new qthr();
+        q->start();
+
     }
 
     void drawOne(int ty,int v,int i,int j,QImage& im)
@@ -141,57 +204,72 @@ public:
         }
     }
 
-
-    void draw()
+    void draw(QByteArray&data,int xl,int yl)
     {
         QPainter painter(this);
-        if(reso == 0)
-        {
-            painter.drawImage(QRect(drawP1,drawP2,pic.width(),pic.height()),pic)    ;
-            return;
-        }
-
         int  pa = maxX;
-        if (pic.width()*reso < maxX)
-            pa = pic.width()*reso;
+        if (xl*reso < maxX)
+            pa = xl*reso;
         int pb = maxY;
-        if (pic.height()*reso < maxY)
-            pb = pic.height()*reso;
+        if (yl*reso < maxY)
+            pb = yl*reso;
         auto im = QPixmap(QSize(pa,pb)).toImage();
-        for (int i=0;i<pic.width();i++)
+        char* temp = data.data();
+        int argb ;
+
+        for (int i=0;i<xl;i++)
         {
-            for (int j=0;j<pic.height();j++)
+            for (int j=0;j<yl;j++)
             {
                 if( (i+1)*reso>maxX || (j+1)*reso>maxY)
                     continue;
-                auto cc = pic.pixel(QPoint(i,j));
-                auto r = qRed(cc);
-                auto g = qGreen(cc);
-                auto b = qBlue(cc);
-                drawOne(0,r,i,j,im);
-                drawOne(1,g,i,j,im);
-                drawOne(2,b,i,j,im);
+                int val =  i+j*xl;
+                memcpy((char*)&argb,temp+val*4,4);
+                drawOne(0,(argb>>0)&0xFF,i,j,im);
+                drawOne(1,(argb>>8)&0xFF,i,j,im);
+                drawOne(2,(argb>>16)&0xFF,i,j,im);
             }
         }
         painter.drawImage(QRect(drawP1,drawP2,im.width(),im.height()),im);
-
+        lastDrawIm = im;
     }
 
-
-
-    void  paintEvent(QPaintEvent*)
+    void drawOri(QByteArray&data,int xL,int yL)
     {
+        auto im = QPixmap(QSize(xL,yL)).toImage();
+        char* temp = data.data();
+        int argb ;
+        for(int j=0;j<yL;j++)
+        {
+            for(int i=0;i<xL;i++)
+            {
+                int val =  i+j*xL;
+                memcpy((char*)&argb,temp+val*4,4);
+                im.setPixelColor(i,j,QColor( (argb>>0)&0xFF, (argb>>8)&0xFF, (argb>>16)&0xFF));
+            }
+        }
 
-        draw();
-        if (pause ||sock!=nullptr)
-            return;
-        xS=xS2;yS=yS2;xL = xL2;yL=yL2;
-        sock = new QTcpSocket();
-        connect(sock, SIGNAL(connected()), this, SLOT(dealConn()));
-        sock->connectToHost("10.23.185.230",8899);
+        QPainter painter(this);
+        painter.drawImage(QRect(drawP1,drawP2,im.width(),im.height()),im);
+        lastDrawIm = im;
     }
+    void  paintEvent(QPaintEvent* e)
+    {
+        g_lock.lock();
+        g_para = para(xStart,yStart,xLen,yLen);
+        auto da=g_buf.buf;auto xLenB = g_buf.x;auto yLenB = g_buf.y;int si=g_buf.si;
+        g_lock.unlock();
+        if(lastDrawId==si && lastDrawReso==reso)
+        {
+              QPainter painter(this);
+                painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
+        }
 
-    ~MainWindow(){}
+        lastDrawId = si;
+        lastDrawReso = reso;
+        if(reso==0) return drawOri(da,xLenB,yLenB);
+        draw(da,xLenB,yLenB);
+    }
 
     bool eventFilter(QObject *obj, QEvent *e)
     {
@@ -239,67 +317,30 @@ public:
         }
     }
 
-
 public slots:
     void onT()
     {
         repaint();
     }
 
+
     void onCli()
     {
-        xS2 =  l1->text().toInt();
-        yS2 =  l2->text().toInt();
-        xL2 =  l3->text().toInt();
-        yL2 =  l4->text().toInt();
+        int   xS2 =  l1->text().toInt();
+        int yS2 =  l2->text().toInt();
+        int   xL2 =  l3->text().toInt();
+        int  yL2 =  l4->text().toInt();
         reso =  l5->text().toInt();
         if (reso<0) reso=0;
         reso = int(reso/3)*3;
+        if (xS2<0||yS2<0||xL2<=0||yL2<=0)
+            return;
+
+        if (xS2+xL2>xCapLen||yS2+yL2>yCapLen)
+            return;
+        xStart = xS2;yStart=yS2;xLen = xL2;yLen = yL2;
     }
 
-    void dealConn()
-    {
-        connect(sock, SIGNAL(readyRead()), this, SLOT(dealRead()));
-        connect(sock, SIGNAL(disconnected()), this, SLOT(dealClose()));
-        QByteArray a;
-        a.append((char*)&xS,4);
-        a.append((char*)&yS,4);
-        a.append((char*)&xL,4);
-        a.append((char*)&yL,4);
-        sock->write(a.data(),a.size());
-    }
-
-    void dealClose()
-    {
-        sock->close();
-        sock->deleteLater();
-        sock = nullptr;
-        if(data.size()==0)return;
-        auto im = QPixmap(QSize(xL,yL)).toImage();
-        char* temp = data.data();
-        int argb ;
-
-        for(int j=0;j<yL;j++)
-        {
-            for(int i=0;i<xL;i++)
-            {
-                int val =  i+j*xL;
-
-                memcpy((char*)&argb,temp+val*4,4);
-                im.setPixelColor(i,j,QColor( (argb>>0)&0xFF, (argb>>8)&0xFF, (argb>>16)&0xFF));
-            }
-        }
-        data.clear();
-        pic = im    ;
-        repaint();
-    }
-    void dealRead()
-    {
-        data.append(sock->readAll());
-    }
 };
-
-
-
 
 #endif
