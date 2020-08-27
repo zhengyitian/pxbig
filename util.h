@@ -97,7 +97,7 @@ public:
         }
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("10.23.185.230",8899);
+        s->connectToHost("192.168.100.89",8899);
         auto xx =    s->waitForConnected(1000);
         if (!xx)
         {

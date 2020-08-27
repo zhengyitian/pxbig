@@ -123,9 +123,9 @@ public:
         {
             QPainter painter(this);
             painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
-            return;
+            return QWidget::paintEvent(e);
         }
-
+lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
         if(!pause)
         {
             g_lock.lock();
@@ -135,12 +135,23 @@ public:
             lastDrawInfo.oriXs = g_buf.xs;
             lastDrawInfo.oriYs = g_buf.ys;
             lastDrawInfo.id = g_buf.si;
-            g_lock.unlock();
-            lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
-            if(reso==0) return drawOri();
-            return draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
+            g_lock.unlock();            
+            if(reso==0)
+            {
+                drawOri();
+              return  QWidget::paintEvent(e);
+            }
+
+             draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
+             return  QWidget::paintEvent(e);
         }
-         if(reso==0) return drawOri();
+
+         if(reso==0)
+         {
+           drawOri();
+           return  QWidget::paintEvent(e);
+         }
+
         auto x = lastDrawInfo.oriXs;
         auto y = lastDrawInfo.oriYs;
         if( xStart>x&&xStart<=x+lastDrawInfo.oriXl)
@@ -149,6 +160,7 @@ public:
             y = yStart;
         auto xGap = xStart-x; auto yGap = yStart-y;
         draw(lastDrawInfo.data,lastDrawInfo.oriXl-xGap,lastDrawInfo.oriYl-yGap,xGap,yGap);
+         return  QWidget::paintEvent(e);
     }
 
     bool eventFilter(QObject *obj, QEvent *e);
