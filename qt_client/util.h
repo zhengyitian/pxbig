@@ -82,13 +82,17 @@ public:
     void run()
     {
         while (1) {
+            auto t1 = QDateTime::currentDateTime().toMSecsSinceEpoch();
             w();
+            auto l=QDateTime::currentDateTime().toMSecsSinceEpoch()-t1;
+            if(l<20)
+                msleep(20-l);
         }
     }
 
     void w()
     {
-        g_lock.lock();
+      g_lock.lock();
         auto te = g_para;
         g_lock.unlock();
         if(te.xl==0||te.yl==0)
@@ -98,12 +102,13 @@ public:
         }
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("10.23.185.230",8899);
+        s->connectToHost("192.168.1.110",8899);
         auto xx =    s->waitForConnected(1000);
         if (!xx)
         {
             s->deleteLater();
             sleep(1);
+            qDebug()<<"conn error";
             return;
         }
 
@@ -124,7 +129,6 @@ public:
         }
         s->deleteLater();
         if(a.size()!=te.xl*te.yl*4)return;
-
         g_lock.lock();
         g_buf.buf = a;
         g_buf.xs = te.xs;

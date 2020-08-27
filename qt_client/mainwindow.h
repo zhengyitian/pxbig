@@ -32,7 +32,7 @@ public:
         iniUI();
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
-        timer->start(50);
+        timer->start(20);
         QCoreApplication::instance()->installEventFilter(this);
         q = new qthr();
         q->start();
@@ -210,8 +210,12 @@ public slots:
         setPara();
         if(!needRepaint())
         {
-            if (repaintCo>10)
+            if (repaintCo>0)
+            {
+         //       qDebug()<<"pass";
                 return;
+            }
+
             repaintCo++;
         }
         update();
