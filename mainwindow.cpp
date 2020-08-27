@@ -125,6 +125,7 @@ void MainWindow::setOk()
 
 void MainWindow::onCli()
 {
+    int be=reso;
     int   xS2 =  l1->text().toInt();
     int yS2 =  l2->text().toInt();
     int   xL2 =  l3->text().toInt();
@@ -132,6 +133,19 @@ void MainWindow::onCli()
     reso =  l5->text().toInt();
     if (reso<0) reso=0;
     reso = int(reso/3)*3;
+    if(be!=0 &&reso==0)
+    {
+        xStart = lastDrawInfo.oriXs;
+        yStart = lastDrawInfo.oriYs;
+        xLen = lastDrawInfo.oriXl;
+        yLen = lastDrawInfo.oriYl;
+        l1->setText (QString::number(xStart));
+        l2 ->setText(QString::number(yStart));
+        l3 ->setText(QString::number(xLen));
+        l4->setText(QString::number(yLen));
+        l5->setText(QString::number(reso));
+        return  setOk();
+    }
     if (xS2<0||yS2<0||xL2<=0||yL2<=0)
         return setErr();
 

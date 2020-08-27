@@ -98,14 +98,14 @@ public:
         }
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("192.168.100.89",8899);
+        s->connectToHost("10.23.185.230",8899);
         auto xx =    s->waitForConnected(1000);
         if (!xx)
         {
             s->deleteLater();
             sleep(1);
             return;
-        }     
+        }
 
         QByteArray a;
         a.append((char*)&te.xs,4);
@@ -128,9 +128,9 @@ public:
         g_lock.lock();
         g_buf.buf = a;
         g_buf.xs = te.xs;
-         g_buf.ys = te.ys;
-          g_buf.xl = te.xl;
-           g_buf.yl = te.yl;
+        g_buf.ys = te.ys;
+        g_buf.xl = te.xl;
+        g_buf.yl = te.yl;
         g_buf.si = co;
         g_lock.unlock();
     }

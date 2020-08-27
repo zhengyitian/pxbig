@@ -33,7 +33,7 @@ public:
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
         timer->start(50);
-       QCoreApplication::instance()->installEventFilter(this);
+        QCoreApplication::instance()->installEventFilter(this);
         q = new qthr();
         q->start();
     }
@@ -125,7 +125,7 @@ public:
         {
             QPainter painter(this);
             painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
-          return ;
+            return ;
         }
 
         lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
@@ -141,25 +141,24 @@ public:
             g_lock.unlock();
             if(reso==0)
             {
-                 return   drawOri();
-
+                return   drawOri();
             }
-         return   draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
+            return   draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
         }
 
         if(reso==0)
         {
-        return     drawOri();
+            return  drawOri();
         }
 
         auto xgap = xStart-lastDrawInfo.oriXs;
-         auto ygap = yStart-lastDrawInfo.oriYs;
-         if (xgap<0)xgap=0;
-         if(ygap<0)ygap=0;
+        auto ygap = yStart-lastDrawInfo.oriYs;
+        if (xgap<0)xgap=0;
+        if(ygap<0)ygap=0;
 
-         if(xgap>lastDrawInfo.oriXl)xgap = lastDrawInfo.oriXl;
-         if(ygap>lastDrawInfo.oriYl)xgap = lastDrawInfo.oriYl;
-   return     draw(lastDrawInfo.data,lastDrawInfo.oriXl-xgap,lastDrawInfo.oriYl-ygap,xgap,ygap);
+        if(xgap>lastDrawInfo.oriXl)xgap = lastDrawInfo.oriXl;
+        if(ygap>lastDrawInfo.oriYl)xgap = lastDrawInfo.oriYl;
+        return   draw(lastDrawInfo.data,lastDrawInfo.oriXl-xgap,lastDrawInfo.oriYl-ygap,xgap,ygap);
 
     }
 
@@ -214,7 +213,6 @@ public slots:
             if (repaintCo>10)
                 return;
             repaintCo++;
-
         }
         update();
     }
