@@ -5,7 +5,7 @@
 class lastDrawInfoC
 {
 public:
-QByteArray data;int oriXs=0,oriYs=0,oriXl=0,oriYl=0; int id=-1;
+    QByteArray data;int oriXs=0,oriYs=0,oriXl=0,oriYl=0; int id=-1;
     int xs=0,ys=0,xl=0,yl=0,reso=0;
 };
 
@@ -25,6 +25,7 @@ public:
     QPushButton *pauseBtn,*setBtn;
     int tipNum=0;
     lastDrawInfoC lastDrawInfo;
+    int repaintCo = 0;
 
     explicit MainWindow(QWidget *parent = nullptr)
     {
@@ -32,7 +33,7 @@ public:
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
         timer->start(50);
-        QCoreApplication::instance()->installEventFilter(this);
+       QCoreApplication::instance()->installEventFilter(this);
         q = new qthr();
         q->start();
     }
@@ -89,7 +90,7 @@ public:
             {
                 if( (i+1)*reso>maxX || (j+1)*reso>maxY)
                     continue;
-                int val =  i+xGap+(j+yGap)*xl;
+                int val =  i+xGap+(j+yGap)*(xl+xGap);
                 memcpy((char*)&argb,temp+val*4,4);
                 drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm);
                 drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm);
@@ -119,13 +120,15 @@ public:
 
     void  paintEvent(QPaintEvent* e)
     {
+        QWidget::paintEvent(e);
         if (!needRepaint())
         {
             QPainter painter(this);
             painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
-            return QWidget::paintEvent(e);
+          return ;
         }
-lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
+
+        lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
         if(!pause)
         {
             g_lock.lock();
@@ -135,32 +138,29 @@ lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInf
             lastDrawInfo.oriXs = g_buf.xs;
             lastDrawInfo.oriYs = g_buf.ys;
             lastDrawInfo.id = g_buf.si;
-            g_lock.unlock();            
+            g_lock.unlock();
             if(reso==0)
             {
-                drawOri();
-              return  QWidget::paintEvent(e);
-            }
+                 return   drawOri();
 
-             draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
-             return  QWidget::paintEvent(e);
+            }
+         return   draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
         }
 
-         if(reso==0)
-         {
-           drawOri();
-           return  QWidget::paintEvent(e);
-         }
+        if(reso==0)
+        {
+        return     drawOri();
+        }
 
-        auto x = lastDrawInfo.oriXs;
-        auto y = lastDrawInfo.oriYs;
-        if( xStart>x&&xStart<=x+lastDrawInfo.oriXl)
-            x = xStart;
-        if( yStart>y&&yStart<=y+lastDrawInfo.oriYl)
-            y = yStart;
-        auto xGap = xStart-x; auto yGap = yStart-y;
-        draw(lastDrawInfo.data,lastDrawInfo.oriXl-xGap,lastDrawInfo.oriYl-yGap,xGap,yGap);
-         return  QWidget::paintEvent(e);
+        auto xgap = xStart-lastDrawInfo.oriXs;
+         auto ygap = yStart-lastDrawInfo.oriYs;
+         if (xgap<0)xgap=0;
+         if(ygap<0)ygap=0;
+
+         if(xgap>lastDrawInfo.oriXl)xgap = lastDrawInfo.oriXl;
+         if(ygap>lastDrawInfo.oriYl)xgap = lastDrawInfo.oriYl;
+   return     draw(lastDrawInfo.data,lastDrawInfo.oriXl-xgap,lastDrawInfo.oriYl-ygap,xgap,ygap);
+
     }
 
     bool eventFilter(QObject *obj, QEvent *e);
@@ -168,7 +168,6 @@ lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInf
     void setOk();
     void setPara()
     {
-
         int xx=xLen; int yy=yLen;
         if(reso>0)
         {
@@ -178,7 +177,7 @@ lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInf
         g_lock.lock();
         if(pause)
         {
-              g_para = para(0,0,0,0);
+            g_para = para(0,0,0,0);
         }
         else
             g_para = para(xStart,yStart,xx,yy);
@@ -191,6 +190,7 @@ lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInf
         {
             if(xStart==lastDrawInfo.xs&&yStart==lastDrawInfo.ys&&reso==lastDrawInfo.reso)
                 return  false;
+            repaintCo = 0;
             return true;
         }
 
@@ -209,8 +209,14 @@ public slots:
     void onT()
     {
         setPara();
-        if(needRepaint())
-            repaint();
+        if(!needRepaint())
+        {
+            if (repaintCo>10)
+                return;
+            repaintCo++;
+
+        }
+        update();
     }
 
     void OnP();

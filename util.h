@@ -21,6 +21,7 @@
 #include "qcoreapplication.h"
 #include "qmutex.h"
 #include "qthread.h"
+#include "qdatetime.h"
 
 class para
 {
