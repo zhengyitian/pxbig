@@ -86,7 +86,14 @@ public:
         co++;
         QTcpSocket* s = new QTcpSocket();
         s->connectToHost("192.168.1.110",8899);
-        s->waitForConnected();
+     auto xx =    s->waitForConnected(1000);
+     if (!xx)
+     {
+         s->deleteLater();
+         sleep(1);
+         return;
+
+     }
         g_lock.lock();
         auto te = g_para;
         g_lock.unlock();
@@ -284,6 +291,14 @@ if(reso>0)
         if (e->type()==QEvent::KeyPress )
         {
             QKeyEvent *keyEvent = static_cast<QKeyEvent*>(e);
+
+            qDebug()<<keyEvent->key();
+            if(keyEvent->key()==16777220)
+            {
+                onCli();
+                return QWidget::eventFilter( obj, e );
+
+            }
 
             if(keyEvent->key()==65)
                 l1->setText(QString::number(l1->text().toInt()-10));
