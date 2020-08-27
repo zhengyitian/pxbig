@@ -28,6 +28,8 @@ void MainWindow::iniUI()
     pauseBtn =  new QPushButton("||");
     connect(pauseBtn, SIGNAL(clicked()), this, SLOT(OnP()));
     h->addWidget(pauseBtn);
+    la = new QLabel();
+              h->addWidget(la);
     v->addLayout(h);
     v->addStretch();
     this->setLayout(v);

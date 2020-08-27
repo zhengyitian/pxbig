@@ -26,7 +26,7 @@ public:
     int tipNum=0;
     lastDrawInfoC lastDrawInfo;
     int repaintCo = 0;
-
+QLabel* la;
     explicit MainWindow(QWidget *parent = nullptr)
     {
         iniUI();
@@ -139,6 +139,7 @@ public:
             lastDrawInfo.oriYs = g_buf.ys;
             lastDrawInfo.id = g_buf.si;
             g_lock.unlock();
+            la->setNum(lastDrawInfo.id);
             if(reso==0)
             {
                 return   drawOri();

@@ -2,7 +2,7 @@
 #define UTIL_H
 
 
-
+#include "qlabel.h"
 #include <QPaintEvent>
 #include "qtimer.h"
 #include "qdebug.h"
