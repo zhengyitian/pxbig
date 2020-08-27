@@ -133,7 +133,7 @@ void MainWindow::onCli()
     reso =  l5->text().toInt();
     if (reso<0) reso=0;
     reso = int(reso/3)*3;
-    if(be!=0 &&reso==0)
+    if(be!=0 &&reso==0&&pause)
     {
         xStart = lastDrawInfo.oriXs;
         yStart = lastDrawInfo.oriYs;
