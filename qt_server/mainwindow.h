@@ -4,8 +4,6 @@
 
 #include <QMainWindow>
 #include <QPaintEvent>
-
-#include "ui_mainwindow.h"
 #include "qtimer.h"
 #include "qdebug.h"
 #include "qdatetime.h"
@@ -20,10 +18,9 @@
 #include "QHBoxLayout"
 #include "qpushbutton.h"
 #include "qlineedit.h"
-
 #include "qtcpserver.h"
 
-
+#include "qguiapplication.h"
 
 class MainWindow : public QWidget
 {
