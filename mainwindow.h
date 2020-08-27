@@ -1,183 +1,43 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
+#include "util.h"
 
-#include <QPaintEvent>
-#include "qtimer.h"
-#include "qdebug.h"
-#include "qdatetime.h"
-#include "qpixmap.h"
-#include "qscreen.h"
-#include "QPaintEvent"
-#include "qpainter.h"
-#include "qcursor.h"
-#include "QDesktopWidget"
-#include "QSettings"
-#include "QtNetwork/qtcpsocket.h"
-#include "QHBoxLayout"
-#include "qpushbutton.h"
-#include "qlineedit.h"
-#include "qcoreapplication.h"
-#include "qmutex.h"
-#include "qthread.h"
-
-class para
+class lastDrawInfoC
 {
 public:
-    int a=1000,b=100,c=100,d=100;
-    para(){}
-    para(int q,int w,int e,int r){a=q;b=w;c=e;d=r;}
+QByteArray data;int oriXs=0,oriYs=0,oriXl=0,oriYl=0; int id=-1;
+    int xs=0,ys=0,xl=0,yl=0,reso=0;
 };
-class bu
-{
-public:
-    QByteArray buf;
-    int x,y,si;
-    bu(){}
-    bu(QByteArray a,int b,int c,int d){buf=a;x=b;y=c,si=d;}
-};
-
-extern int xCapLen;
-extern int yCapLen ;
-extern int drawP1;
-extern int drawP2 ;
-extern int maxX ;
-extern int maxY ;
-extern QMutex g_lock;
-extern para g_para;
-extern bu g_buf;
-
-
-class myLine : public QLineEdit
-{
-    Q_OBJECT
-signals:
-    void wh();
-
-public:
-    explicit myLine(QString t=""):QLineEdit(t)
-    {
-
-    }
-    virtual void wheelEvent(QWheelEvent *e)
-    {
-        int aa = e->angleDelta().y()/120;
-        int t = aa+ text().toInt();
-        setText(QString::number(t));
-        emit(wh());
-    }
-};
-
-class qthr:public QThread
-{
-    Q_OBJECT
-public:
-    int co=0;
-
-    qthr():QThread(){}
-    void run()
-    {
-        while (1) {
-            w();
-        }
-    }
-    void w()
-    {
-        co++;
-        QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("10.23.185.230",8899);
-
-        auto xx =    s->waitForConnected(1000);
-        if (!xx)
-        {
-            s->deleteLater();
-            sleep(1);
-            return;
-        }
-
-        g_lock.lock();
-        auto te = g_para;
-        g_lock.unlock();
-        QByteArray a;
-        a.append((char*)&te.a,4);
-        a.append((char*)&te.b,4);
-        a.append((char*)&te.c,4);
-        a.append((char*)&te.d,4);
-        s->write(a.data(),a.size());
-        s->waitForBytesWritten();
-
-        a.clear();
-        while (1) {
-            s->waitForReadyRead();
-            auto x = s->readAll();
-            if(x.size()==0)break;
-            a.append(x);
-        }
-        s->deleteLater();
-        if(a.size()!=te.c*te.d*4)return;
-
-        g_lock.lock();
-        g_buf.buf = a;
-        g_buf.x = te.c;
-        g_buf.y = te.d;
-        g_buf.si = co;
-        g_lock.unlock();
-    }
-};
-
 
 class MainWindow : public QWidget
 {
     Q_OBJECT
 public:
-
     qthr * q;
-    int xStart = g_para.a;
-    int yStart = g_para.b;
-    int xLen  = g_para.c;
-    int yLen = g_para.d;
+    int xStart = g_para.xs;
+    int yStart = g_para.ys;
+    int xLen  = g_para.xl;
+    int yLen = g_para.yl;
     bool pause = false;
     int reso = 0;
     myLine *l1,*l2,*l3,*l4,*l5;
-    int lastDrawId = -1;
-    int lastDrawReso = 0;
     QImage lastDrawIm;
+    QPushButton *pauseBtn,*setBtn;
+    int tipNum=0;
+    lastDrawInfoC lastDrawInfo;
+
     explicit MainWindow(QWidget *parent = nullptr)
     {
-
+        iniUI();
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
         timer->start(50);
         QCoreApplication::instance()->installEventFilter(this);
-
-        QVBoxLayout *v = new QVBoxLayout();
-        QHBoxLayout *h = new QHBoxLayout();
-
-        QPushButton *p = new QPushButton("set");
-        connect(p, SIGNAL(clicked()), this, SLOT(onCli()));
-
-        l1 = new myLine(QString::number(xStart));
-        l2 = new myLine(QString::number(yStart));
-        l3 = new myLine(QString::number(xLen));
-        l4 = new myLine(QString::number(yLen));
-        l5 = new myLine(QString::number(reso));
-        connect(l1, SIGNAL(wh()), this, SLOT(onCli()));
-        connect(l2, SIGNAL(wh()), this, SLOT(onCli()));
-        connect(l3, SIGNAL(wh()), this, SLOT(onCli()));
-        connect(l4, SIGNAL(wh()), this, SLOT(onCli()));
-        connect(l5, SIGNAL(wh()), this, SLOT(onCli()));
-
-        h->addWidget(l1);
-        h->addWidget(l2);
-        h->addWidget(l3);
-        h->addWidget(l4);
-        h->addWidget(l5);
-        h->addWidget(p);
-        v->addLayout(h);
-        v->addStretch();
-        this->setLayout(v);
         q = new qthr();
         q->start();
     }
+
+    void iniUI();
 
     void drawOne(int ty,int v,int i,int j,QImage& im)
     {
@@ -210,7 +70,7 @@ public:
         }
     }
 
-    void draw(QByteArray&data,int xl,int yl)
+    void draw(QByteArray&data,int xl,int yl,int xGap=0,int yGap=0)
     {
         QPainter painter(this);
         int  pa = maxX;
@@ -219,7 +79,7 @@ public:
         int pb = maxY;
         if (yl*reso < maxY)
             pb = yl*reso;
-        auto im = QPixmap(QSize(pa,pb)).toImage();
+        lastDrawIm = QPixmap(QSize(pa,pb)).toImage();
         char* temp = data.data();
         int argb ;
 
@@ -229,144 +89,120 @@ public:
             {
                 if( (i+1)*reso>maxX || (j+1)*reso>maxY)
                     continue;
-                int val =  i+j*xl;
+                int val =  i+xGap+(j+yGap)*xl;
                 memcpy((char*)&argb,temp+val*4,4);
-                drawOne(0,(argb>>0)&0xFF,i,j,im);
-                drawOne(1,(argb>>8)&0xFF,i,j,im);
-                drawOne(2,(argb>>16)&0xFF,i,j,im);
+                drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm);
+                drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm);
+                drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm);
             }
         }
-        painter.drawImage(QRect(drawP1,drawP2,im.width(),im.height()),im);
-        lastDrawIm = im;
+        painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
     }
 
-    void drawOri(QByteArray&data,int xL,int yL)
+    void drawOri()
     {
-        auto im = QPixmap(QSize(xL,yL)).toImage();
-        char* temp = data.data();
+        lastDrawIm = QPixmap(QSize(lastDrawInfo.oriXl,lastDrawInfo.oriYl)).toImage();
+        char* temp = lastDrawInfo.data.data();
         int argb ;
-        for(int j=0;j<yL;j++)
+        for(int j=0;j<lastDrawInfo.oriYl;j++)
         {
-            for(int i=0;i<xL;i++)
+            for(int i=0;i<lastDrawInfo.oriXl;i++)
             {
-                int val =  i+j*xL;
+                int val =  i+j*lastDrawInfo.oriXl;
                 memcpy((char*)&argb,temp+val*4,4);
-                im.setPixelColor(i,j,QColor( (argb>>0)&0xFF, (argb>>8)&0xFF, (argb>>16)&0xFF));
+                lastDrawIm.setPixelColor(i,j,QColor( (argb>>0)&0xFF, (argb>>8)&0xFF, (argb>>16)&0xFF));
             }
         }
-
         QPainter painter(this);
-        painter.drawImage(QRect(drawP1,drawP2,im.width(),im.height()),im);
-        lastDrawIm = im;
+        painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
     }
 
     void  paintEvent(QPaintEvent* e)
     {
+        if (!needRepaint())
+        {
+            QPainter painter(this);
+            painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
+            return;
+        }
+
+        if(!pause)
+        {
+            g_lock.lock();
+            lastDrawInfo.data=g_buf.buf;
+            lastDrawInfo.oriXl = g_buf.xl;
+            lastDrawInfo.oriYl = g_buf.yl;
+            lastDrawInfo.oriXs = g_buf.xs;
+            lastDrawInfo.oriYs = g_buf.ys;
+            lastDrawInfo.id = g_buf.si;
+            g_lock.unlock();
+            lastDrawInfo.xs=xStart;lastDrawInfo.ys=yStart;lastDrawInfo.xl = xLen;lastDrawInfo.yl=yLen;lastDrawInfo.reso=reso;
+            if(reso==0) return drawOri();
+            return draw(lastDrawInfo.data,lastDrawInfo.oriXl,lastDrawInfo.oriYl);
+        }
+         if(reso==0) return drawOri();
+        auto x = lastDrawInfo.oriXs;
+        auto y = lastDrawInfo.oriYs;
+        if( xStart>x&&xStart<=x+lastDrawInfo.oriXl)
+            x = xStart;
+        if( yStart>y&&yStart<=y+lastDrawInfo.oriYl)
+            y = yStart;
+        auto xGap = xStart-x; auto yGap = yStart-y;
+        draw(lastDrawInfo.data,lastDrawInfo.oriXl-xGap,lastDrawInfo.oriYl-yGap,xGap,yGap);
+    }
+
+    bool eventFilter(QObject *obj, QEvent *e);
+    void setErr();
+    void setOk();
+    void setPara()
+    {
+
         int xx=xLen; int yy=yLen;
         if(reso>0)
         {
             if(xx>maxX/reso)xx=maxX/reso;
             if(yy>maxY/reso)yy=maxY/reso;
         }
-
         g_lock.lock();
-        g_para = para(xStart,yStart,xx,yy);
-        auto da=g_buf.buf;auto xLenB = g_buf.x;auto yLenB = g_buf.y;int si=g_buf.si;
-        g_lock.unlock();
-        if(lastDrawId==si && lastDrawReso==reso)
+        if(pause)
         {
-            QPainter painter(this);
-            painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
+              g_para = para(0,0,0,0);
         }
-
-        lastDrawId = si;
-        lastDrawReso = reso;
-        if(reso==0) return drawOri(da,xLenB,yLenB);
-        draw(da,xLenB,yLenB);
+        else
+            g_para = para(xStart,yStart,xx,yy);
+        g_lock.unlock();
     }
 
-    bool eventFilter(QObject *obj, QEvent *e)
+    bool needRepaint()
     {
-        if (e->type()==QEvent::KeyPress )
+        if(pause)
         {
-            QKeyEvent *keyEvent = static_cast<QKeyEvent*>(e);
-            qDebug()<<keyEvent->key();
-            if(keyEvent->key()==16777220 ||keyEvent->key()==16777221)
-            {
-                onCli();
-                return QWidget::eventFilter( obj, e );
-            }
-            if(keyEvent->key()==65)
-                l1->setText(QString::number(l1->text().toInt()-10));
-
-            else if(keyEvent->key()==74)
-                l3->setText(QString::number(l3->text().toInt()-10));
-
-            else if(keyEvent->key()==87)
-                l2->setText(QString::number(l2->text().toInt()-10));
-
-            else if(keyEvent->key()==73)
-                l4->setText(QString::number(l4->text().toInt()-10));
-
-            else if(keyEvent->key()==75)
-                l4->setText(QString::number(l4->text().toInt()+10));
-
-            else if(keyEvent->key()==76)
-                l3->setText(QString::number(l3->text().toInt()+10));
-
-            else if(keyEvent->key()==83)
-                l2->setText(QString::number(l2->text().toInt()+10));
-
-            else if(keyEvent->key()==81)
-                l5->setText(QString::number(l5->text().toInt()-3));
-
-            else if(keyEvent->key()==69)
-                l5->setText(QString::number(l5->text().toInt()+3));
-
-            else if(keyEvent->key()==68)
-                l1->setText(QString::number(l1->text().toInt()+10));
-
-            else
-            {
-                return QWidget::eventFilter( obj, e );
-            }
-            onCli();
-            e->accept();
+            if(xStart==lastDrawInfo.xs&&yStart==lastDrawInfo.ys&&reso==lastDrawInfo.reso)
+                return  false;
             return true;
         }
+
+        bool j=true;
+        g_lock.lock();
+        if(lastDrawInfo.id==g_buf.si)
+        {
+            j = false;
+        }
+        g_lock.unlock();
+        return j;
     }
 
 public slots:
+
     void onT()
     {
-        bool j=false;
-        g_lock.lock();
-        if(lastDrawId==g_buf.si && lastDrawReso==reso)
-        {
-            j = true;
-        }
-        g_lock.unlock();
-        if (j) return;
-        repaint();
+        setPara();
+        if(needRepaint())
+            repaint();
     }
 
-    void onCli()
-    {
-        int   xS2 =  l1->text().toInt();
-        int yS2 =  l2->text().toInt();
-        int   xL2 =  l3->text().toInt();
-        int  yL2 =  l4->text().toInt();
-        reso =  l5->text().toInt();
-        if (reso<0) reso=0;
-        reso = int(reso/3)*3;
-        if (xS2<0||yS2<0||xL2<=0||yL2<=0)
-            return;
-
-        if (xS2+xL2>xCapLen||yS2+yL2>yCapLen)
-            return;
-        xStart = xS2;yStart=yS2;xLen = xL2;yLen = yL2;
-    }
-
+    void OnP();
+    void onCli();
 };
 
 #endif
