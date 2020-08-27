@@ -45,8 +45,7 @@ public slots:
     void newConnection()
     {
         socket = server->nextPendingConnection();
-        socket->waitForReadyRead();
-
+        socket->waitForReadyRead(1000);
         auto a = socket->readAll();
         if(a.size()!=16)
         {
