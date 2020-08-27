@@ -12,7 +12,7 @@
 #include "qcursor.h"
 #include "QDesktopWidget"
 #include "QSettings"
-
+#include "qnetwork.h"
 #include "QtNetwork/qtcpsocket.h"
 #include "QHBoxLayout"
 #include "qpushbutton.h"
@@ -85,15 +85,8 @@ public:
     {
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost("192.168.1.110",8899);
-     auto xx =    s->waitForConnected(1000);
-     if (!xx)
-     {
-         s->deleteLater();
-         sleep(1);
-         return;
-
-     }
+        s->connectToHost("10.23.185.230",8899);
+        s->waitForConnected();
         g_lock.lock();
         auto te = g_para;
         g_lock.unlock();
@@ -262,16 +255,8 @@ QImage lastDrawIm;
     }
     void  paintEvent(QPaintEvent* e)
     {
-int xx=xLen; int yy=yLen;
-if(reso>0)
-{
-    if(xx>maxX/reso)xx=maxX/reso;
-    if(yy>maxY/reso)yy=maxY/reso;
-}
         g_lock.lock();
-
-        g_para = para(xStart,yStart,xx,yy);
-
+        g_para = para(xStart,yStart,xLen,yLen);
         auto da=g_buf.buf;auto xLenB = g_buf.x;auto yLenB = g_buf.y;int si=g_buf.si;
         g_lock.unlock();
         if(lastDrawId==si && lastDrawReso==reso)
@@ -291,14 +276,6 @@ if(reso>0)
         if (e->type()==QEvent::KeyPress )
         {
             QKeyEvent *keyEvent = static_cast<QKeyEvent*>(e);
-
-            qDebug()<<keyEvent->key();
-            if(keyEvent->key()==16777220)
-            {
-                onCli();
-                return QWidget::eventFilter( obj, e );
-
-            }
 
             if(keyEvent->key()==65)
                 l1->setText(QString::number(l1->text().toInt()-10));
@@ -343,14 +320,6 @@ if(reso>0)
 public slots:
     void onT()
     {
-        bool j=false;
-        g_lock.lock();
-        if(lastDrawId==g_buf.si && lastDrawReso==reso)
-        {
-             j = true;
-        }
-        g_lock.unlock();
-        if (j) return;
         repaint();
     }
 
