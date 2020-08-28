@@ -8,8 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.media.Image
-import android.media.ImageReader
+import android.media.*
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -20,12 +19,16 @@ import android.widget.Button
 import android.widget.ImageView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
+import kotlin.experimental.and
 
 var con_width = 2244
 var con_height = 2244
@@ -40,6 +43,13 @@ class thr : Thread() {
     var mScreenWidth = con_width
     var mScreenHeight = con_height
     var mScreenDensity = 0
+    var RECORDER_SAMPLERATE = 44100;//44.1k
+    var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO ;
+    var RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    var BufferElements2Rec = 65536; // want to play 2048 (2K) since 2 bytes we use only 1024
+    var BytesPerElement = 2; // 2 bytes in 16bit format
+    lateinit var recorder: AudioRecord
+
 
     fun q() {
         stopVirtual()
@@ -138,11 +148,47 @@ class thr : Thread() {
         }
     }
 
+
+    fun iniAudio()
+    {
+
+
+        try {
+            var con=   AudioPlaybackCaptureConfiguration.Builder(mMediaProjection!!)
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN).addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .build();
+
+            recorder = AudioRecord.Builder()  .setAudioPlaybackCaptureConfig(con) .
+                setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RECORDER_SAMPLERATE)
+                        .setChannelMask(RECORDER_CHANNELS)
+                        .build()
+                )
+                .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                .build();
+
+
+            recorder.startRecording();
+
+
+            var tt=Thread(Runnable {   writeAudioDataToFile(); })
+            tt.start()
+        }
+        catch (e:Exception)
+        {
+            e.printStackTrace()
+        }
+    }
+
     @RequiresApi(Build.VERSION_CODES.KITKAT)
     override fun run() {
         createImageReader()
         Thread.sleep(1000)
         startVirtual()
+//iniAudio()
         var ser = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 8899)
         ser.bind(add)
@@ -155,17 +201,15 @@ class thr : Thread() {
                 cli.configureBlocking(false)
                 var selector = Selector.open()
                 cli.register(selector, SelectionKey.OP_READ)
-                selector.select(maxWaitTime+1000.toLong())
+                selector.select(maxWaitTime + 1000.toLong())
                 selector.close()
-                if (System.currentTimeMillis()-beginTime>maxWaitTime)
-                {
+                if (System.currentTimeMillis() - beginTime > maxWaitTime) {
                     cli.close()
                     continue
                 }
                 var jj = ByteBuffer.allocate(16)
                 var rr = cli.read(jj)
-                if(rr!=16)
-                {
+                if (rr != 16) {
                     cli.close()
                     continue
                 }
@@ -175,6 +219,8 @@ class thr : Thread() {
                 var ybegin = jj.getInt()
                 var xlen = jj.getInt()
                 var ylen = jj.getInt()
+
+
                 var bitmap = startCapture()
                 upper.runOnUiThread({ upper.showImg(bitmap) })
                 val imageSize = bitmap.rowBytes * bitmap.height
@@ -186,17 +232,20 @@ class thr : Thread() {
                 for (j in ybegin until ybegin + ylen) {
                     var startPos = xbegin + j * 2244
                     var endPos = xbegin + j * 2244 + xlen
-                    bb.put( uncompressedBuffer.array().slice(startPos * 4 until endPos * 4).toByteArray()
+                    bb.put(
+                        uncompressedBuffer.array().slice(startPos * 4 until endPos * 4).toByteArray()
                     )
                 }
                 bb.flip()
+
+                //      var bb=ByteBuffer.wrap(ByteArray(xlen*ylen*4))
                 var si = bb.array().size
-                var co=0
+                var co = 0
+                cli.configureBlocking(false)
                 selector = Selector.open()
-                while (co!=si&&System.currentTimeMillis()-beginTime<maxWaitTime)
-                {
-                    cli.register(selector,SelectionKey.OP_WRITE)
-                    selector.select(maxWaitTime+1000.toLong())
+                while (co != si && System.currentTimeMillis() - beginTime < maxWaitTime) {
+                    cli.register(selector, SelectionKey.OP_WRITE)
+                    selector.select(maxWaitTime + 1000.toLong())
                     co += cli.write(bb)
                 }
                 selector.close()
@@ -206,13 +255,31 @@ class thr : Thread() {
             }
         }
     }
+
+    fun writeAudioDataToFile() {
+        val sData = ShortArray(BufferElements2Rec)
+        while (true) {
+            recorder.read(sData, 0, BufferElements2Rec)
+            val bData: ByteArray = util.short2byte(sData)
+            for (i in bData)
+            {
+                if (i!=0.toByte())
+                {
+                    println(bData.size)
+                }
+            }
+            println(bData.size)
+        }
+    }
 }
 
 class MainActivity : AppCompatActivity() {
     lateinit var ii: Intent
     var worker = thr()
 
-    @SuppressLint("ServiceCast")
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    @SuppressLint("ServiceCast", "WrongConstant")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != 1) {
@@ -235,8 +302,11 @@ class MainActivity : AppCompatActivity() {
             worker.mResultData = data.clone() as Intent
             worker.isDaemon = true
             worker.start()
+
         }
     }
+
+
 
     fun q() {
         worker.q()
