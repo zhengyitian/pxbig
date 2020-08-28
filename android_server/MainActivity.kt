@@ -28,6 +28,7 @@ import java.nio.ByteOrder
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
+import java.nio.channels.SocketChannel
 import kotlin.experimental.and
 
 var con_width = 2244
@@ -46,7 +47,7 @@ class thr : Thread() {
     var RECORDER_SAMPLERATE = 44100;//44.1k
     var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO ;
     var RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    var BufferElements2Rec = 65536; // want to play 2048 (2K) since 2 bytes we use only 1024
+    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
     var BytesPerElement = 2; // 2 bytes in 16bit format
     lateinit var recorder: AudioRecord
 
@@ -151,8 +152,6 @@ class thr : Thread() {
 
     fun iniAudio()
     {
-
-
         try {
             var con=   AudioPlaybackCaptureConfiguration.Builder(mMediaProjection!!)
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN).addMatchingUsage(AudioAttributes.USAGE_MEDIA)
@@ -169,11 +168,7 @@ class thr : Thread() {
                 )
                 .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
                 .build();
-
-
             recorder.startRecording();
-
-
             var tt=Thread(Runnable {   writeAudioDataToFile(); })
             tt.start()
         }
@@ -257,18 +252,22 @@ class thr : Thread() {
     }
 
     fun writeAudioDataToFile() {
+        var so = SocketChannel.open()
+        var add = InetSocketAddress("192.168.1.117",7788)
+        var l = 0
+        so.connect(add)
         val sData = ShortArray(BufferElements2Rec)
         while (true) {
             recorder.read(sData, 0, BufferElements2Rec)
             val bData: ByteArray = util.short2byte(sData)
-            for (i in bData)
+            var bb = ByteBuffer.wrap(bData)
+            so.write(bb)
+            l += bData.size
+            if(l>100*1024*1024)
             {
-                if (i!=0.toByte())
-                {
-                    println(bData.size)
-                }
+                so.close()
             }
-            println(bData.size)
+
         }
     }
 }
