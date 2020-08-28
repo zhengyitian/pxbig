@@ -224,6 +224,7 @@ class thrC : Thread() {
 
         } catch (e: Exception) {
             e.printStackTrace()
+            s.close()
             return return ByteBuffer.allocate(0)
         }
     }
