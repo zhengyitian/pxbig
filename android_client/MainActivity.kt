@@ -1,8 +1,13 @@
 package com.example.server
 
+import android.R.attr.button
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnTouchListener
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.appcompat.app.AppCompatActivity
@@ -11,18 +16,74 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SocketChannel
 
+
 var xs = 0
 var ys = 0
 var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
-var reso = 0
-var maxX = 600
-var maxY = 600
+var g_reso = 0
+var maxX = 800
+var maxY = 800
+
+class RepeatListener(
+    initialInterval: Int, normalInterval: Int,
+    clickListener: View.OnClickListener?
+) : OnTouchListener {
+    private val handler: Handler = Handler()
+    private val initialInterval: Int
+    private val normalInterval: Int
+    private val clickListener: View.OnClickListener
+    private var touchedView: View? = null
+    private val handlerRunnable: Runnable = object : Runnable {
+        override fun run() {
+            if (touchedView?.isEnabled()!!) {
+                handler.postDelayed(this, normalInterval.toLong())
+                if (clickListener != null) {
+                    clickListener.onClick(touchedView)
+                }
+            } else {
+                handler.removeCallbacks(this)
+                touchedView!!.setPressed(false)
+                touchedView = null
+            }
+        }
+    }
+
+    override fun onTouch(view: View?, motionEvent: MotionEvent): Boolean {
+        when (motionEvent.action) {
+            MotionEvent.ACTION_DOWN -> {
+                handler.removeCallbacks(handlerRunnable)
+                handler.postDelayed(handlerRunnable, initialInterval.toLong())
+                touchedView = view
+                touchedView?.setPressed(true)
+                clickListener.onClick(view)
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(handlerRunnable)
+                touchedView?.setPressed(false)
+                touchedView = null
+                return true
+            }
+        }
+        return false
+    }
+
+    init {
+        requireNotNull(clickListener) { "null runnable" }
+        require(!(initialInterval < 0 || normalInterval < 0)) { "negative interval" }
+        this.initialInterval = initialInterval
+        this.normalInterval = normalInterval
+        this.clickListener = clickListener
+    }
+}
+
 
 class thrC : Thread() {
     lateinit var upper: MainActivity
     lateinit var ip: String
+    var reso = 0;
 
     fun drawOne(ty: Int, v: Int, i: Int, j: Int, im: Bitmap) {
         var redCount = v * reso * reso / 3 / 255;
@@ -32,49 +93,18 @@ class thrC : Thread() {
         for (ii in i * reso + gap until gap + i * reso + reso / 3) {
             for (jj in j * reso until (j + 1) * reso) {
                 if (redCo >= redCount) {
-
-                    try {
-
                     im.setPixel(ii, jj, Color.rgb(0, 0, 0))
-                    }
-                    catch (e:java.lang.Exception)
-                    {
-                        e.printStackTrace()
-                    }
                     continue
                 }
                 if (ty == 0) {
-
-
-                    try {
                     im.setPixel(ii, jj, Color.rgb(255, 0, 0))
-                    }
-                    catch (e:java.lang.Exception)
-                    {
-                        e.printStackTrace()
-                    }
 
                 } else if (ty == 1) {
 
-
-                    try {
                     im.setPixel(ii, jj, Color.rgb(0, 255, 0))
 
-                    }
-                    catch (e:java.lang.Exception)
-                    {
-                        e.printStackTrace()
-                    }
                 } else if (ty == 2) {
-
-try {
-    im.setPixel(ii, jj, Color.rgb(0, 0, 255))
-}
-catch (e:java.lang.Exception)
-{
-    e.printStackTrace()
-}
-
+                    im.setPixel(ii, jj, Color.rgb(0, 0, 255))
                 }
                 redCo += 1;
             }
@@ -93,23 +123,23 @@ catch (e:java.lang.Exception)
         for (j in 0 until yl) {
             for (i in 0 until xl) {
 
-                if ((i +2) * reso > maxX-1 || (j +2) * reso > maxY-1) {
+                if ((i + 1) * reso > maxX || (j + 1) * reso > maxY) {
                     ss.getInt()
-                    continue
+                } else {
+                    var r = ss.get().toInt()
+                    var g = ss.get().toInt()
+                    var b = ss.get().toInt()
+                    ss.get()
+                    if (r < 0)
+                        r += 256
+                    if (g < 0)
+                        g += 256
+                    if (b < 0)
+                        b += 256
+                    drawOne(0, r, i, j, bb);
+                    drawOne(1, g, i, j, bb);
+                    drawOne(2, b, i, j, bb);
                 }
-                var r = ss.get().toInt()
-                var g = ss.get().toInt()
-                var b = ss.get().toInt()
-                ss.get()
-                if (r < 0)
-                    r += 256
-                if (g < 0)
-                    g += 256
-                if (b < 0)
-                    b += 256
-                drawOne(0, r, i, j, bb);
-                drawOne(1, g, i, j, bb);
-                drawOne(2, b, i, j, bb);
             }
         }
         return bb
@@ -117,16 +147,17 @@ catch (e:java.lang.Exception)
 
     override fun run() {
         while (true) {
+            reso = g_reso
             var xs2 = xs
             var ys2 = ys
             var xl2 = xlen
             var xl = xl2
             var yl = xl2
-            if (xl + xs2 + 1 > xCapLen) {
-                xl = xCapLen - 1 - xs2
+            if (xl + xs2 > xCapLen) {
+                xl = xCapLen - xs2
             }
-            if (yl + ys2 + 1 > yCapLen) {
-                yl = yCapLen - 1 - ys2
+            if (yl + ys2 > yCapLen) {
+                yl = yCapLen - ys2
             }
             if (xl == 0 || yl == 0) {
                 Thread.sleep(10)
@@ -202,8 +233,80 @@ class MainActivity : AppCompatActivity() {
     var hasStart = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        var inte = 30
+        findViewById<Button>(R.id.seekBar1b1).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress - 1)
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.seekBar1b2).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress + 1)
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.seekBar2b1).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress - 1)
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.seekBar2b2).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress + 1)
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.seekBar3b1).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress - 1)
+                    }
+                })
+        )
+        findViewById<Button>(R.id.seekBar3b2).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress + 1)
+                    }
+                })
+        )
+        findViewById<Button>(R.id.seekBar4b1).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
+                    }
+                })
+        )
+        findViewById<Button>(R.id.seekBar4b2).setOnTouchListener(
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
+                    }
+                })
+        )
+
+
         findViewById<SeekBar>(R.id.seekBar1).setOnSeekBarChangeListener(object :
             OnSeekBarChangeListener {
             override fun onProgressChanged(
@@ -254,7 +357,7 @@ class MainActivity : AppCompatActivity() {
                 fromUser: Boolean
             ) {
                 findViewById<TextView>(R.id.seekBar4t).setText(progress.toString())
-                reso = 3 * progress
+                g_reso = 3 * progress
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -272,8 +375,8 @@ class MainActivity : AppCompatActivity() {
             t.ip = findViewById<EditText>(R.id.ip).text.toString()
             t.upper = this
             t.start()
-            findViewById<SeekBar>(R.id.seekBar1).max = xCapLen - 1
-            findViewById<SeekBar>(R.id.seekBar2).max = yCapLen - 1
+            findViewById<SeekBar>(R.id.seekBar1).max = xCapLen
+            findViewById<SeekBar>(R.id.seekBar2).max = yCapLen
             findViewById<SeekBar>(R.id.seekBar3).max = 200
             findViewById<SeekBar>(R.id.seekBar4).max = 20
         }

@@ -57,9 +57,16 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <Button
+            android:id="@+id/seekBar1b1"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="-" />
+
         <SeekBar
             android:id="@+id/seekBar1"
-            android:layout_width="325dp"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
             android:layout_weight="1" />
 
@@ -70,15 +77,29 @@
             android:layout_weight="1"
             android:text="TextView" />
 
+        <Button
+            android:id="@+id/seekBar1b2"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+" />
     </LinearLayout>
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
+            <Button
+                android:id="@+id/seekBar2b1"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="-" />
+
             <SeekBar
                 android:id="@+id/seekBar2"
-                android:layout_width="315dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
@@ -89,15 +110,29 @@
                 android:layout_weight="1"
                 android:text="TextView" />
 
+            <Button
+                android:id="@+id/seekBar2b2"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="+" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
+            <Button
+                android:id="@+id/seekBar3b1"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="-" />
+
             <SeekBar
                 android:id="@+id/seekBar3"
-                android:layout_width="322dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
@@ -108,15 +143,29 @@
                 android:layout_weight="1"
                 android:text="TextView" />
 
+            <Button
+                android:id="@+id/seekBar3b2"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="+" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
+            <Button
+                android:id="@+id/seekBar4b1"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="-" />
+
             <SeekBar
                 android:id="@+id/seekBar4"
-                android:layout_width="300dp"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
@@ -128,13 +177,13 @@
                 android:text="TextView" />
 
             <Button
-                android:id="@+id/button2"
-                android:layout_width="44dp"
+                android:id="@+id/seekBar4b2"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="||" />
-
+                android:text="+" />
         </LinearLayout>
+
         <ImageView
             android:id="@+id/imageView"
             android:layout_width="wrap_content"
