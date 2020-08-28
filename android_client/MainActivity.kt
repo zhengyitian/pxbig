@@ -23,8 +23,9 @@ var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
 var g_reso = 0
-var maxX = 800
-var maxY = 800
+var maxX = 700
+var maxY = 700
+var pause = false
 
 class RepeatListener(
     initialInterval: Int, normalInterval: Int,
@@ -147,6 +148,10 @@ class thrC : Thread() {
 
     override fun run() {
         while (true) {
+            if (pause) {
+                Thread.sleep(10)
+                continue
+            }
             reso = g_reso
             var xs2 = xs
             var ys2 = ys
@@ -238,6 +243,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         var inte = 30
+        findViewById<Button>(R.id.pauseBtn).setOnClickListener {
+            pause = !pause
+            if(pause)
+            {
+                findViewById<Button>(R.id.pauseBtn).setText("->")
+            }
+            else
+            {
+                findViewById<Button>(R.id.pauseBtn).setText("||")
+            }
+        }
+
         findViewById<Button>(R.id.seekBar1b1).setOnTouchListener(
             RepeatListener(400, inte,
                 object : View.OnClickListener {
