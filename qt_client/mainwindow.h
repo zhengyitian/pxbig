@@ -89,12 +89,15 @@ QLabel* la;
             for (int j=0;j<yl;j++)
             {
                 if( (i+1)*reso>maxX || (j+1)*reso>maxY)
-                    continue;
-                int val =  i+xGap+(j+yGap)*(xl+xGap);
-                memcpy((char*)&argb,temp+val*4,4);
-                drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm);
-                drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm);
-                drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm);
+                {}
+                else {
+                    int val =  i+xGap+(j+yGap)*(xl+xGap);
+                    memcpy((char*)&argb,temp+val*4,4);
+                    drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm);
+                    drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm);
+                    drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm);
+                }
+
             }
         }
         painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
