@@ -50,7 +50,7 @@ extern int maxY ;
 extern QMutex g_lock;
 extern para g_para;
 extern bu g_buf;
-extern QString g_ip;
+
 
 class myLine : public QLineEdit
 {
@@ -102,7 +102,7 @@ public:
         }
         co++;
         QTcpSocket* s = new QTcpSocket();
-        s->connectToHost(g_ip,8899);
+        s->connectToHost("192.168.1.110",8899);
         auto xx =    s->waitForConnected(1000);
         if (!xx)
         {

@@ -9,6 +9,14 @@ public:
     int xs=0,ys=0,xl=0,yl=0,reso=0;
 };
 
+class pointItem
+{
+public:
+    int x=0, y=0;
+    pointItem(){}
+    pointItem(int a,int b){x=a;y=b;}
+};
+
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -25,10 +33,13 @@ public:
     QPushButton *pauseBtn,*setBtn;
     int tipNum=0;
     lastDrawInfoC lastDrawInfo;
-    int repaintCo = 0;
-QLabel* la;
+    bool hasRepaint = false;
+    QLabel* la;
+    QMap<int,QVector< pointItem>> drawInfo;
+
     explicit MainWindow(QWidget *parent = nullptr)
     {
+        drawInfo[3] = {pointItem(0,0),pointItem(9,9),pointItem(5,5)};
         iniUI();
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
@@ -39,12 +50,34 @@ QLabel* la;
     }
 
     void iniUI();
-
-    void drawOne(int ty,int v,int i,int j,QImage& im)
+    void drawSpec()
     {
-        int   redCount = v*reso*reso/3/255;
-        int   redCo = 0;
+
+    }
+    void drawOne(int ty,int v,int i,int j,QImage& im,Qt::GlobalColor col)
+    {
         int gap =  reso/3*ty;
+        int   redCount = v*reso*reso/3/255;
+
+        if(reso==30&&drawInfo.contains(redCount))
+        {
+            auto di = i*reso+gap;
+            auto dy = j*reso;
+            for (int ii=i*reso+gap;ii<gap+i*reso+reso/3;ii++)
+            {
+                for(int jj=j*reso;jj<(j+1)*reso;jj++)
+                {
+                    im.setPixelColor(ii,jj,Qt::black);
+                }
+            }
+            for(auto& p:drawInfo[redCount])
+            {
+                im.setPixelColor(di+p.x,dy+p.y,col);
+            }
+            return;
+        }
+        int   redCo = 0;
+
         for (int ii=i*reso+gap;ii<gap+i*reso+reso/3;ii++)
         {
             for(int jj=j*reso;jj<(j+1)*reso;jj++)
@@ -54,18 +87,7 @@ QLabel* la;
                     im.setPixelColor(ii,jj,Qt::black);
                     continue;
                 }
-                if(ty==0)
-                {
-                    im.setPixelColor(ii,jj,Qt::red);
-                }
-                else if(ty ==1)
-                {
-                    im.setPixelColor(ii,jj,Qt::green);
-                }
-                else if(ty==2)
-                {
-                    im.setPixelColor(ii,jj,Qt::blue);
-                }
+                im.setPixelColor(ii,jj,col);
                 redCo += 1  ;
             }
         }
@@ -89,15 +111,12 @@ QLabel* la;
             for (int j=0;j<yl;j++)
             {
                 if( (i+1)*reso>maxX || (j+1)*reso>maxY)
-                {}
-                else {
-                    int val =  i+xGap+(j+yGap)*(xl+xGap);
-                    memcpy((char*)&argb,temp+val*4,4);
-                    drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm);
-                    drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm);
-                    drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm);
-                }
-
+                    continue;
+                int val =  i+xGap+(j+yGap)*(xl+xGap);
+                memcpy((char*)&argb,temp+val*4,4);
+                drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm,Qt::red);
+                drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm,Qt::green);
+                drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm,Qt::blue);
             }
         }
         painter.drawImage(QRect(drawP1,drawP2,lastDrawIm.width(),lastDrawIm.height()),lastDrawIm);
@@ -193,7 +212,7 @@ QLabel* la;
         {
             if(xStart==lastDrawInfo.xs&&yStart==lastDrawInfo.ys&&reso==lastDrawInfo.reso)
                 return  false;
-            repaintCo = 0;
+            hasRepaint = false;
             return true;
         }
 
@@ -214,13 +233,11 @@ public slots:
         setPara();
         if(!needRepaint())
         {
-            if (repaintCo>0)
+            if (hasRepaint)
             {
-         //       qDebug()<<"pass";
                 return;
             }
-
-            repaintCo++;
+            hasRepaint = true;
         }
         update();
     }
