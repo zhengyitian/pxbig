@@ -9,9 +9,7 @@ import android.view.View
 import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.io.*
 import java.lang.Exception
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -245,6 +243,15 @@ class MainActivity : AppCompatActivity() {
             numText.setText(coMap.size.toString())
             bv.setImageBitmap(b)
         }
+        loadNum = EditText(this)
+        loadNum.setText("0")
+        addui(loadNum, 200, 150)
+loadBtn = Button(this)
+        loadBtn.setText("load")
+        addui(loadBtn, 200, 150)
+        loadBtn.setOnClickListener{
+onLoad()
+        }
 
         serveBtn = Button(this)
         serveBtn.setText("serve")
@@ -283,8 +290,60 @@ class MainActivity : AppCompatActivity() {
                 true
             }
         }
+       var closeBtn = Button(this)
+        closeBtn.setText("close")
+        addui(closeBtn, 200, 150)
+        closeBtn.setOnClickListener{
+            System.exit(0)
+        }
     }
+fun onLoad()
+{
+    var a = loadNum.text.toString().toInt()
+    for (i in a..coX* coY)
+    {
+        try {
+            var file: File = File(baseContext.filesDir, i.toString())
+            var br = BufferedReader(FileReader(file))
+            coMap.clear()
+            ini()
+            while (true) {
+                var line = br.readLine()
+                if (line == null)
+                    break
+                var a = line.split(" ")
+                var i = a[0].toInt()
+                var j = a[1].toInt()
+                var k = i.toString() + " " + j.toString()
+                coMap[k] = 1
+                for (ii in (i - 1) * boxLen until i * boxLen) {
+                    for (jj in (j - 1) * boxLen until j * boxLen) {
+                        b.setPixel(ii, jj, drawColor)
+                    }
+                }
+            }
+                drawLine()
+                bv.setImageBitmap(b)
+                numText.setText(coMap.size.toString())
 
+                for (j in i+1..coX* coY)
+                {
+                    try {
+                        var file: File = File(baseContext.filesDir, j.toString())
+                        var br = BufferedReader(FileReader(file))
+                        loadNum.setText(j.toString())
+                        break
+                    }
+                    catch (e:Exception)
+                    {
+                    }
+            }
+                break
+        }
+        catch (e:Exception)
+        {}
+    }
+}
     fun serOver() {
         serveBtn.isEnabled = true
     }
