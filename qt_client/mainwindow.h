@@ -39,7 +39,9 @@ public:
 
     explicit MainWindow(QWidget *parent = nullptr)
     {
-        drawInfo[3] = {pointItem(0,0),pointItem(9,9),pointItem(5,5)};
+        for(int i=0;i<=300;i++)
+            fillDrawinfo(i);
+  //     drawInfo[3] = {pointItem(0,0),pointItem(9,9),pointItem(5,5)};
         iniUI();
         QTimer *timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(onT()));
@@ -48,7 +50,27 @@ public:
         q = new qthr();
         q->start();
     }
-
+void fillDrawinfo(int co)
+{
+    auto filename = "e:/drawinfo/"+QString::number(co)+".txt";
+    QFile file(filename);
+    if(!file.open(QFile::ReadOnly |
+                  QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading "+filename;
+        return;
+    }
+    drawInfo[co] = {};
+    QTextStream in(&file);
+    while (1) {
+        QString myText = in.readLine();
+        if(myText == "")
+            break;
+        auto l = myText.split(" ");
+         drawInfo[co].append(pointItem(l[0].toInt()-1,l[1].toInt()-1));
+    }
+       file.close();
+}
     void iniUI();
     void drawSpec()
     {

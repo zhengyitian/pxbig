@@ -1,8 +1,27 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-#include "util.h"
-#include "qmap.h"
 
+#include "qmap.h"
+#include "qlabel.h"
+#include <QPaintEvent>
+#include "qtimer.h"
+#include "qdebug.h"
+#include "qdatetime.h"
+#include "qpixmap.h"
+#include "qscreen.h"
+#include "QPaintEvent"
+#include "qpainter.h"
+#include "qcursor.h"
+#include "QDesktopWidget"
+#include "QSettings"
+#include "QtNetwork/qtcpsocket.h"
+#include "QHBoxLayout"
+#include "qpushbutton.h"
+#include "qlineedit.h"
+#include "qcoreapplication.h"
+#include "qmutex.h"
+#include "qthread.h"
+#include "qdatetime.h"
 
 class MainWindow : public QWidget
 {
@@ -25,10 +44,18 @@ public:
         lastDrawIm.fill(oriColor);
         drawLine();
         QCoreApplication::instance()->installEventFilter(this);
-        la->setGeometry(coX*boxLen+50,0,100,100);
         la->setText(QString::number(coMap.size()));
+        iniUI();
     }
-
+    void iniUI()
+    {
+        QVBoxLayout *v = new QVBoxLayout();
+        QHBoxLayout *h = new QHBoxLayout();
+        v->addWidget(la);
+        h->addStretch();
+        h->addLayout(v);
+        this->setLayout(h);
+    }
     void drawLine()
     {
         for (int i=1;i<coX;i++)
@@ -85,9 +112,67 @@ public:
             }
         }
     }
+    void save()
+    {
+        if (coMap.size()==0)
+            return;
+        auto filename = "e:/drawinfo/"+QString::number(coMap.size())+".txt";
+        QFile file(filename);
 
+        if(!file.open(QFile::WriteOnly |
+                      QFile::Text))
+        {
+            qDebug() << " Could not open file for writing";
+            return;
+        }
+        QTextStream out(&file);
+        for (auto& i :coMap.keys())
+        {
+            out<<i<<"\n";
+        }
+        file.flush();
+        file.close();
+    }
+    void read()
+    {
+        auto filename = "e:/drawinfo/"+QString::number(coMap.size())+".txt";
+        QFile file(filename);
+        if(!file.open(QFile::ReadOnly |
+                      QFile::Text))
+        {
+            qDebug() << " Could not open the file for reading";
+            return;
+        }
+        QTextStream in(&file);
+        while (1) {
+            QString myText = in.readLine();
+
+            if(myText == "")
+                break;
+            auto l = myText.split(" ");
+            qDebug() << l;
+        }
+
+
+        file.close();
+
+    }
     bool eventFilter(QObject *obj, QEvent *e)
     {
+        if (e->type()==QEvent::KeyPress )
+        {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent*>(e);
+            qDebug()<<keyEvent->key();
+            if(keyEvent->key()==83)
+            {
+                save();
+            }
+            if(keyEvent->key()==82)
+            {
+                read();
+            }
+            return true;
+        }
         if(e->type()!=QEvent::MouseButtonPress )
             return false;
         QMouseEvent* me = static_cast<QMouseEvent*>(e);
@@ -102,7 +187,7 @@ public:
                 if(x<=boxLen*i&&y<=j*boxLen)
                 {
                     dealFind(i,j);
-                      la->setText(QString::number(coMap.size()));
+                    la->setText(QString::number(coMap.size()));
                     drawLine();
                     qDebug()<<i<<j<<coMap.size();
                     update();
