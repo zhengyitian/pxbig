@@ -1,4 +1,3 @@
-
 package com.example.server
 
 import android.graphics.Bitmap
@@ -11,9 +10,7 @@ import android.view.View.OnTouchListener
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.io.*
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -30,9 +27,12 @@ var maxX = 700
 var maxY = 700
 var pause = false
 
+class pointItem(var x: Int, var y: Int) {
+}
+
 class RepeatListener(
-        initialInterval: Int, normalInterval: Int,
-        clickListener: View.OnClickListener?
+    initialInterval: Int, normalInterval: Int,
+    clickListener: View.OnClickListener?
 ) : OnTouchListener {
     private val handler: Handler = Handler()
     private val initialInterval: Int
@@ -83,21 +83,100 @@ class RepeatListener(
     }
 }
 
+class recvThr : Thread() {
+    var ip = ""
+    lateinit var path: File
+    fun w() {
+        var add = InetSocketAddress(ip, 8898)
+        var so = SocketChannel.open()
+        so.connect(add)
+        var b = ByteBuffer.allocate(4)
+        so.read(b)
+        b.flip()
+        b.order(ByteOrder.LITTLE_ENDIAN)
+        var i = b.getInt()
+        b = ByteBuffer.allocate(300 * 100)
+        var to = 0
+        while (true) {
+            var re = so.read(b)
+            if (re <= 0)
+                break
+            to += re
+        }
+        var file: File = File(path, i.toString())
+        var f = FileOutputStream(file)
+        f.write(b.array(), 0, to)
+        f.close()
+    }
+
+    override fun run() {
+        while (true) {
+            try {
+                w()
+            } catch (e: java.lang.Exception) {
+                Thread.sleep(1)
+            }
+        }
+    }
+}
 
 class thrC : Thread() {
     lateinit var upper: MainActivity
     lateinit var ip: String
-    var reso = 0;
+    lateinit var path: File
 
-    fun drawOne(ty: Int, v: Int, i: Int, j: Int, col:Int,im: Bitmap) {
+    var reso = 0;
+    var drawInfo = HashMap<Int, ArrayList<pointItem>>()
+
+
+    fun iniOne(i: Int) {
+        var l = ArrayList<pointItem>()
+        var file: File = File(path, i.toString())
+        var br = BufferedReader(FileReader(file))
+        while (true) {
+            var line = br.readLine()
+            if (line == null)
+                break
+           var a= line.split(" ")
+            l.add(pointItem(a[0].toInt(),a[1].toInt()))
+        }
+        drawInfo[i] = l
+    }
+
+    fun iniD() {
+     for(i in 0..300)
+     {
+         try {
+             iniOne(i)
+         }
+         catch (e:Exception)
+         {}
+     }
+    }
+
+    fun drawOne(ty: Int, v: Int, i: Int, j: Int, col: Int, im: Bitmap) {
         var redCount = v * reso * reso / 3 / 255;
-        var redCo = 0;
         var gap = reso / 3 * ty;
 
+        if (reso == 30 && drawInfo.contains(redCount)) {
+            var di = i * reso + gap;
+            var dy = j * reso;
+            for (ii in i * reso + gap until gap + i * reso + reso / 3) {
+                for (jj in j * reso until (j + 1) * reso) {
+                    im.setPixel(ii, jj, Color.BLACK)
+                }
+            }
+            for (p in drawInfo[redCount]!!) {
+                im.setPixel(di + p.x, dy + p.y, col)
+            }
+            return;
+        }
+
+        var redCo = 0;
         for (ii in i * reso + gap until gap + i * reso + reso / 3) {
             for (jj in j * reso until (j + 1) * reso) {
                 if (redCo >= redCount) {
-                    im.setPixel(ii, jj,  Color.BLACK)
+                    im.setPixel(ii, jj, Color.BLACK)
                     continue
                 }
                 im.setPixel(ii, jj, col)
@@ -131,9 +210,9 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
-                    drawOne(0, r, i, j,Color.RED, bb);
-                    drawOne(1, g, i, j, Color.GREEN,bb);
-                    drawOne(2, b, i, j, Color.BLUE,bb);
+                    drawOne(0, r, i, j, Color.RED, bb);
+                    drawOne(1, g, i, j, Color.GREEN, bb);
+                    drawOne(2, b, i, j, Color.BLUE, bb);
                 }
             }
         }
@@ -213,7 +292,7 @@ class thrC : Thread() {
                 var x = s.read(ss)
                 if (x == 0 && re != xl * yl * 4) {
                     s.close()
-                    return return ByteBuffer.allocate(0)
+                    return ByteBuffer.allocate(0)
                 }
                 re += x
             }
@@ -231,11 +310,10 @@ class thrC : Thread() {
 
 class MainActivity : AppCompatActivity() {
     var hasStart = false
-fun saveText()
-    {
+    fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
-        var f=  FileOutputStream(file)
+        var f = FileOutputStream(file)
         var bb = ByteBuffer.allocate(100)
         var b = findViewById<EditText>(R.id.ip).text.toString().toByteArray()
         bb.putInt(b.size)
@@ -249,8 +327,8 @@ fun saveText()
         f.write(bb.array())
         f.close()
     }
-    fun iniText()
-    {
+
+    fun iniText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
         val f = FileInputStream(file)
@@ -258,16 +336,16 @@ fun saveText()
         f.read(b, 0, 100)
         f.close()
 
-        var bb=ByteBuffer.wrap(b)
-       var l = bb.getInt()
+        var bb = ByteBuffer.wrap(b)
+        var l = bb.getInt()
         var stb = ByteArray(l)
         bb.get(stb)
         var st = String(stb)
         findViewById<EditText>(R.id.ip).setText(st)
         l = bb.getInt()
-         stb = ByteArray(l)
+        stb = ByteArray(l)
         bb.get(stb)
-         st = String(stb)
+        st = String(stb)
         findViewById<EditText>(R.id.xCapLen).setText(st)
         l = bb.getInt()
         stb = ByteArray(l)
@@ -282,99 +360,100 @@ fun saveText()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         var inte = 30
+
         try {
             iniText()
+        } catch (e: Exception) {
         }
-        catch (e:Exception)
-        {}
+        var tt = recvThr()
+        tt.ip = findViewById<EditText>(R.id.ip).text.toString()
+        tt.path = baseContext.filesDir
+        tt.start()
         findViewById<Button>(R.id.pauseBtn).setOnClickListener {
             pause = !pause
-            if(pause)
-            {
+            if (pause) {
                 findViewById<Button>(R.id.pauseBtn).setText("->")
-            }
-            else
-            {
+            } else {
                 findViewById<Button>(R.id.pauseBtn).setText("||")
             }
         }
 
         findViewById<Button>(R.id.seekBar1b1).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress - 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress - 1)
+                    }
+                })
         )
 
         findViewById<Button>(R.id.seekBar1b2).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress + 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar1).setProgress(findViewById<SeekBar>(R.id.seekBar1).progress + 1)
+                    }
+                })
         )
 
         findViewById<Button>(R.id.seekBar2b1).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress - 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress - 1)
+                    }
+                })
         )
 
         findViewById<Button>(R.id.seekBar2b2).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress + 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar2).setProgress(findViewById<SeekBar>(R.id.seekBar2).progress + 1)
+                    }
+                })
         )
 
         findViewById<Button>(R.id.seekBar3b1).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress - 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress - 1)
+                    }
+                })
         )
         findViewById<Button>(R.id.seekBar3b2).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress + 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar3).setProgress(findViewById<SeekBar>(R.id.seekBar3).progress + 1)
+                    }
+                })
         )
         findViewById<Button>(R.id.seekBar4b1).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
+                    }
+                })
         )
         findViewById<Button>(R.id.seekBar4b2).setOnTouchListener(
-                RepeatListener(400, inte,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
-                            }
-                        })
+            RepeatListener(400, inte,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
+                    }
+                })
         )
 
 
         findViewById<SeekBar>(R.id.seekBar1).setOnSeekBarChangeListener(object :
-                OnSeekBarChangeListener {
+            OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 findViewById<TextView>(R.id.seekBar1t).setText(progress.toString())
                 xs = progress
@@ -384,11 +463,11 @@ fun saveText()
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
         findViewById<SeekBar>(R.id.seekBar2).setOnSeekBarChangeListener(object :
-                OnSeekBarChangeListener {
+            OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 ys = progress
                 findViewById<TextView>(R.id.seekBar2t).setText(progress.toString())
@@ -398,11 +477,11 @@ fun saveText()
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
         findViewById<SeekBar>(R.id.seekBar3).setOnSeekBarChangeListener(object :
-                OnSeekBarChangeListener {
+            OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 xlen = progress
                 findViewById<TextView>(R.id.seekBar3t).setText(progress.toString())
@@ -412,11 +491,11 @@ fun saveText()
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
         findViewById<SeekBar>(R.id.seekBar4).setOnSeekBarChangeListener(object :
-                OnSeekBarChangeListener {
+            OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 findViewById<TextView>(R.id.seekBar4t).setText(progress.toString())
                 g_reso = 3 * progress
@@ -430,10 +509,9 @@ fun saveText()
                 System.exit(0)
             }
             try {
-              saveText()
+                saveText()
+            } catch (e: Exception) {
             }
-            catch (e:Exception)
-            {}
             xCapLen = findViewById<EditText>(R.id.xCapLen).text.toString().toInt()
             yCapLen = findViewById<EditText>(R.id.yCapLen).text.toString().toInt()
             findViewById<Button>(R.id.button).setText("stop")
@@ -441,6 +519,8 @@ fun saveText()
             var t = thrC()
             t.ip = findViewById<EditText>(R.id.ip).text.toString()
             t.upper = this
+            t.path = baseContext.filesDir
+            t.iniD()
             t.start()
             findViewById<SeekBar>(R.id.seekBar1).max = xCapLen
             findViewById<SeekBar>(R.id.seekBar2).max = yCapLen
