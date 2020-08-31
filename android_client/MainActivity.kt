@@ -138,7 +138,7 @@ class thrC : Thread() {
             if (line == null)
                 break
             var a= line.split(" ")
-            l.add(pointItem(a[0].toInt(),a[1].toInt()))
+            l.add(pointItem(a[0].toInt()-1,a[1].toInt()-1))
         }
         drawInfo[i] = l
     }
@@ -275,6 +275,7 @@ class thrC : Thread() {
         var s = SocketChannel.open()
         var add = InetSocketAddress(ip, 8899)
         try {
+
             s.connect(add)
             var b = ByteBuffer.allocate(16)
             b.order(ByteOrder.LITTLE_ENDIAN)
