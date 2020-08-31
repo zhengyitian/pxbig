@@ -44,6 +44,7 @@ class thrC : Thread() {
             var b = getF(i)
             if (b.size == 0)
                 continue
+            upper.runOnUiThread { upper.serCha(i) }
             var so = s.accept()
             var aa = ByteBuffer.allocate(4)
             aa.order(ByteOrder.LITTLE_ENDIAN)
@@ -246,11 +247,11 @@ class MainActivity : AppCompatActivity() {
         loadNum = EditText(this)
         loadNum.setText("0")
         addui(loadNum, 200, 150)
-loadBtn = Button(this)
+        loadBtn = Button(this)
         loadBtn.setText("load")
         addui(loadBtn, 200, 150)
         loadBtn.setOnClickListener{
-onLoad()
+            onLoad()
         }
 
         serveBtn = Button(this)
@@ -290,41 +291,42 @@ onLoad()
                 true
             }
         }
-       var closeBtn = Button(this)
+        var closeBtn = Button(this)
         closeBtn.setText("close")
         addui(closeBtn, 200, 150)
         closeBtn.setOnClickListener{
             System.exit(0)
         }
     }
-fun onLoad()
-{
-    var a = loadNum.text.toString().toInt()
-    for (i in a..coX* coY)
+    fun onLoad()
     {
-        try {
-            var file: File = File(baseContext.filesDir, i.toString())
-            var br = BufferedReader(FileReader(file))
-            coMap.clear()
-            ini()
-            while (true) {
-                var line = br.readLine()
-                if (line == null)
-                    break
-                var a = line.split(" ")
-                var i = a[0].toInt()
-                var j = a[1].toInt()
-                var k = i.toString() + " " + j.toString()
-                coMap[k] = 1
-                for (ii in (i - 1) * boxLen until i * boxLen) {
-                    for (jj in (j - 1) * boxLen until j * boxLen) {
-                        b.setPixel(ii, jj, drawColor)
+        var a = loadNum.text.toString().toInt()
+        for (i in a..coX* coY)
+        {
+            try {
+                var file: File = File(baseContext.filesDir, i.toString())
+                var br = BufferedReader(FileReader(file))
+                coMap.clear()
+                ini()
+                while (true) {
+                    var line = br.readLine()
+                    if (line == null)
+                        break
+                    var a = line.split(" ")
+                    var i = a[0].toInt()
+                    var j = a[1].toInt()
+                    var k = i.toString() + " " + j.toString()
+                    coMap[k] = 1
+                    for (ii in (i - 1) * boxLen until i * boxLen) {
+                        for (jj in (j - 1) * boxLen until j * boxLen) {
+                            b.setPixel(ii, jj, drawColor)
+                        }
                     }
                 }
-            }
                 drawLine()
                 bv.setImageBitmap(b)
                 numText.setText(coMap.size.toString())
+                loadNum.setText(i.toString())
 
                 for (j in i+1..coX* coY)
                 {
@@ -337,14 +339,19 @@ fun onLoad()
                     catch (e:Exception)
                     {
                     }
-            }
+                }
                 break
+            }
+            catch (e:Exception)
+            {}
         }
-        catch (e:Exception)
-        {}
     }
-}
+    fun serCha(i:Int)
+    {
+        serveBtn.setText(i.toString())
+    }
     fun serOver() {
         serveBtn.isEnabled = true
+        serveBtn.setText("serve")
     }
 }
