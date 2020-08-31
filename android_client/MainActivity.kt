@@ -114,7 +114,7 @@ class recvThr : Thread() {
             try {
                 w()
             } catch (e: java.lang.Exception) {
-                Thread.sleep(1)
+                Thread.sleep(1000)
             }
         }
     }
@@ -137,21 +137,21 @@ class thrC : Thread() {
             var line = br.readLine()
             if (line == null)
                 break
-           var a= line.split(" ")
+            var a= line.split(" ")
             l.add(pointItem(a[0].toInt(),a[1].toInt()))
         }
         drawInfo[i] = l
     }
 
     fun iniD() {
-     for(i in 0..300)
-     {
-         try {
-             iniOne(i)
-         }
-         catch (e:Exception)
-         {}
-     }
+        for(i in 0..300)
+        {
+            try {
+                iniOne(i)
+            }
+            catch (e:Exception)
+            {}
+        }
     }
 
     fun drawOne(ty: Int, v: Int, i: Int, j: Int, col: Int, im: Bitmap) {
