@@ -14,6 +14,8 @@ import java.io.*
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
 import java.nio.channels.SocketChannel
 
 
@@ -127,7 +129,7 @@ class thrC : Thread() {
 
     var reso = 0;
     var drawInfo = HashMap<Int, ArrayList<pointItem>>()
-
+var maxWaitTime = 5*1000.toLong()
 
     fun iniOne(i: Int) {
         var l = ArrayList<pointItem>()
@@ -273,23 +275,32 @@ class thrC : Thread() {
 
     fun w(xs2: Int, ys2: Int, xl: Int, yl: Int): ByteBuffer {
         var s = SocketChannel.open()
-        var add = InetSocketAddress(ip, 8899)
-        try {
 
+        var add = InetSocketAddress(ip, 8899)
+        var sT = System.currentTimeMillis()
+        try {
             s.connect(add)
+            s.configureBlocking(false)
             var b = ByteBuffer.allocate(16)
             b.order(ByteOrder.LITTLE_ENDIAN)
-
             b.putInt(xs2)
             b.putInt(ys2)
-
             b.putInt(xl)
             b.putInt(yl)
             b.flip()
             s.write(b)
             var ss = ByteBuffer.allocate(xl * yl * 4)
             var re = 0
+         var   se = Selector.open()
+            s.register(se,SelectionKey.OP_READ)
             while (re != xl * yl * 4) {
+                se.select(maxWaitTime+100)
+                if(System.currentTimeMillis()-sT>maxWaitTime)
+                {
+                    s.close()
+                    se.close()
+                    return ByteBuffer.allocate(0)
+                }
                 var x = s.read(ss)
                 if (x == 0 && re != xl * yl * 4) {
                     s.close()
@@ -297,10 +308,10 @@ class thrC : Thread() {
                 }
                 re += x
             }
+            se.close()
             s.close()
             ss.flip()
             return ss
-
         } catch (e: Exception) {
             e.printStackTrace()
             s.close()
