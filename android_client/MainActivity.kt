@@ -25,8 +25,8 @@ var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
 var g_reso = 0
-var maxX = 700
-var maxY = 700
+var maxX = 1000
+var maxY = 1000
 var pause = false
 
 class pointItem(var x: Int, var y: Int) {
@@ -543,6 +543,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun show(bitmap: Bitmap) {
+        if (pause)
+            return
         findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
     }
 }
