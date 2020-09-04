@@ -17,6 +17,8 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import java.io.FileNotFoundException
@@ -34,6 +36,7 @@ import kotlin.experimental.and
 var con_width = 2244
 var con_height = 2244
 
+lateinit var g_med: MediaProjection
 
 class thr : Thread() {
     lateinit var upper: MainActivity
@@ -44,12 +47,6 @@ class thr : Thread() {
     var mScreenWidth = con_width
     var mScreenHeight = con_height
     var mScreenDensity = 0
-    var RECORDER_SAMPLERATE = 44100;//44.1k
-    var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO ;
-    var RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
-    var BytesPerElement = 2; // 2 bytes in 16bit format
-    lateinit var recorder: AudioRecord
 
 
     fun q() {
@@ -82,6 +79,7 @@ class thr : Thread() {
     fun setUpMediaProjection() {
         mMediaProjection =
             getMediaProjectionManager().getMediaProjection(Activity.RESULT_OK, mResultData)
+        g_med = mMediaProjection!!
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -149,34 +147,6 @@ class thr : Thread() {
         }
     }
 
-
-    fun iniAudio()
-    {
-        try {
-            var con=   AudioPlaybackCaptureConfiguration.Builder(mMediaProjection!!)
-                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN).addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                .build();
-
-            recorder = AudioRecord.Builder()  .setAudioPlaybackCaptureConfig(con) .
-                setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(RECORDER_SAMPLERATE)
-                        .setChannelMask(RECORDER_CHANNELS)
-                        .build()
-                )
-                .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
-                .build();
-            recorder.startRecording();
-            var tt=Thread(Runnable {   writeAudioDataToFile(); })
-            tt.start()
-        }
-        catch (e:Exception)
-        {
-            e.printStackTrace()
-        }
-    }
 
     @RequiresApi(Build.VERSION_CODES.KITKAT)
     override fun run() {
@@ -251,31 +221,137 @@ class thr : Thread() {
         }
     }
 
-    fun writeAudioDataToFile() {
-        var so = SocketChannel.open()
-        var add = InetSocketAddress("192.168.1.117",7788)
-        var l = 0
-        so.connect(add)
-        val sData = ShortArray(BufferElements2Rec)
-        while (true) {
-            recorder.read(sData, 0, BufferElements2Rec)
-            val bData: ByteArray = util.short2byte(sData)
-            var bb = ByteBuffer.wrap(bData)
-            so.write(bb)
-            l += bData.size
-            if(l>100*1024*1024)
-            {
-                so.close()
-            }
 
-        }
-    }
 }
 
 class MainActivity : AppCompatActivity() {
     lateinit var ii: Intent
     var worker = thr()
+    lateinit var recorder: AudioRecord
+    var RECORDER_SAMPLERATE = 44100;//44.1k
+    var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
+    var RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
+    var BytesPerElement = 2; // 2 bytes in 16bit format
 
+    var soundData = ByteArray(0)
+    lateinit var audio: AudioTrack
+    var hasStop=false
+    var b = ByteBuffer.allocate(1024 * 1024 * 6)
+    fun writeAudioDataToFile(i:Int) {
+      b.clear()
+        val sData = ShortArray(BufferElements2Rec)
+        var co = 0
+        while (true) {
+            if(hasStop)
+            {
+                hasStop=false
+                break
+            }
+            recorder.read(sData, 0, BufferElements2Rec)
+            val bData: ByteArray = util.short2byte(sData)
+            co += bData.size
+            b.put(bData)
+            if (co > 1024 * 1024 * 5)
+                break
+        }
+        recorder.stop()
+        recorder.release()
+        soundData = b.array().sliceArray(0 until co)
+        this.runOnUiThread {
+            if(i==1)
+            findViewById<Button>(R.id.startBtn).isEnabled = true
+            else
+                findViewById<Button>(R.id.startoutBtn).isEnabled = true
+        }
+    }
+
+    fun iniAudio(i: Int) {
+        try {
+            var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .build();
+            if (i == 1) {
+                recorder = AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RECORDER_SAMPLERATE)
+                        .setChannelMask(RECORDER_CHANNELS)
+                        .build()
+                )
+                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .build();
+            } else {
+                recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(RECORDER_SAMPLERATE)
+                            .setChannelMask(RECORDER_CHANNELS)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .build();
+            }
+
+            recorder.startRecording();
+            var tt = Thread(Runnable { writeAudioDataToFile(i); })
+            tt.start()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+    fun doPlay(j:Float) {
+        var co = (j*soundData.size).toInt()
+        if(co%2==1)
+            co += 1
+        var writeLen = 2048
+        while (true)
+        {
+            if(hasStop)
+            {
+                hasStop = false
+                break
+            }
+            if (co+writeLen>soundData.size)
+                break
+            audio.write(soundData, co,writeLen)
+            co += writeLen
+        }
+        audio.stop()
+        audio.release()
+        this.runOnUiThread {
+            findViewById<Button>(R.id.playBtn).isEnabled = true
+        }
+    }
+
+    fun play() {
+        var i = findViewById<SeekBar>(R.id.seekBar).progress.toFloat()  *3/ findViewById<SeekBar>(R.id.seekBar).max.toFloat()
+        i += 0.1.toFloat()
+
+        var bufsize = AudioTrack.getMinBufferSize(
+            (44100 * i).toInt(),
+            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
+        );
+
+        audio = AudioTrack(
+            AudioManager.STREAM_MUSIC,
+            (44100 * i).toInt(), //sample rate
+            AudioFormat.CHANNEL_OUT_STEREO, //2 channel
+            AudioFormat.ENCODING_PCM_16BIT, // 16-bit
+            bufsize,
+            AudioTrack.MODE_STREAM
+        );
+        audio.play()
+        var j = findViewById<SeekBar>(R.id.seekBar2).progress.toFloat()  / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
+        var tt = Thread(Runnable { doPlay(j); })
+        tt.start()
+    }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     @SuppressLint("ServiceCast", "WrongConstant")
@@ -306,7 +382,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-
     fun q() {
         worker.q()
         stopService(ii)
@@ -318,6 +393,56 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         findViewById<Button>(R.id.button).setOnClickListener { q() }
+        findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop=true }
+
+        findViewById<Button>(R.id.playBtn).setOnClickListener {
+            findViewById<Button>(R.id.playBtn).isEnabled = false
+            play()
+        }
+        findViewById<Button>(R.id.startBtn).setOnClickListener {
+            findViewById<Button>(R.id.startBtn).isEnabled = false
+            iniAudio(1)
+        }
+
+        findViewById<Button>(R.id.startoutBtn).setOnClickListener {
+            findViewById<Button>(R.id.startoutBtn).isEnabled = false
+            iniAudio(2)
+        }
+        findViewById<Button>(R.id.jianBtn).setOnClickListener {
+            findViewById<SeekBar>(R.id.seekBar).progress -= 1
+        }
+        findViewById<Button>(R.id.jiaBtn).setOnClickListener {
+            findViewById<SeekBar>(R.id.seekBar).progress += 1
+        }
+        findViewById<SeekBar>(R.id.seekBar).max = 100
+        findViewById<SeekBar>(R.id.seekBar).progress = 30
+        findViewById<SeekBar>(R.id.seekBar).setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                findViewById<TextView>(R.id.seekBarText).setText(progress.toString())
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
+        findViewById<SeekBar>(R.id.seekBar2).max = 100
+        findViewById<SeekBar>(R.id.seekBar2).setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                findViewById<TextView>(R.id.seekBarText2).setText(progress.toString())
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
         var projectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
