@@ -67,14 +67,14 @@
 
             <Button
                 android:id="@+id/jianBtn"
-                android:layout_width="wrap_content"
+                android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="-" />
 
             <SeekBar
                 android:id="@+id/seekBar"
-                android:layout_width="200dp"
+                android:layout_width="228dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:visibility="visible" />
@@ -88,7 +88,7 @@
 
             <Button
                 android:id="@+id/jiaBtn"
-                android:layout_width="wrap_content"
+                android:layout_width="51dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="+" />

@@ -306,7 +306,8 @@ class MainActivity : AppCompatActivity() {
 
 
     fun doPlay(j:Float) {
-        var co = (j*soundData.size).toInt()
+        var soundData2 = soundData
+        var co = (j*soundData2.size).toInt()
         if(co%2==1)
             co += 1
         var writeLen = 2048
@@ -317,9 +318,9 @@ class MainActivity : AppCompatActivity() {
                 hasStop = false
                 break
             }
-            if (co+writeLen>soundData.size)
+            if (co+writeLen>soundData2.size)
                 break
-            audio.write(soundData, co,writeLen)
+            audio.write(soundData2, co,writeLen)
             co += writeLen
         }
         audio.stop()
