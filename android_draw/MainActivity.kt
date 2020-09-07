@@ -93,24 +93,36 @@ class MainActivity : AppCompatActivity() {
         rl.addView(a, params);
     }
 
-    fun ini() {
-        for (i in 0..coX * boxLen - 1) {
-            for (j in 0..coY * boxLen - 1)
-                b.setPixel(i, j, oriColor)
+    fun drawOne(x: Int, y: Int, c: Int) {
+        for (i in (x - 1) * boxLen + lineLen until x * boxLen - lineLen) {
+            for (j in (y - 1) * boxLen + lineLen until y * boxLen - lineLen) {
+                b.setPixel(i, j, c)
+            }
         }
     }
 
-    fun drawLine() {
-        for (i in 1 until coX) {
-            for (j in i * boxLen - lineLen..i * boxLen + lineLen) {
-                for (k in 0 until coY * boxLen)
-                    b.setPixel(j, k, lineColor)
-            }
+    fun drawOneLine(x: Int, y: Int) {
+        for (i in (x - 1) * boxLen until (x - 1) * boxLen + lineLen) {
+            for (j in (y - 1) * boxLen until y * boxLen)
+                b.setPixel(i, j, lineColor)
         }
-        for (i in 1 until coY) {
-            for (j in i * boxLen - lineLen..i * boxLen + lineLen) {
-                for (k in 0 until coX * boxLen)
-                    b.setPixel(k, j, lineColor)
+        for (i in x * boxLen - lineLen until x * boxLen) {
+            for (j in (y - 1) * boxLen until y * boxLen)
+                b.setPixel(i, j, lineColor)
+        }
+        for (i in (x - 1) * boxLen + lineLen until x * boxLen - lineLen) {
+            for (j in (y - 1) * boxLen until (y - 1) * boxLen + lineLen)
+                b.setPixel(i, j, lineColor)
+            for (j in y * boxLen - lineLen until y * boxLen)
+                b.setPixel(i, j, lineColor)
+        }
+    }
+
+    fun ini() {
+        for (i in 1..coX) {
+            for (j in 1..coY) {
+                drawOne(i, j, oriColor)
+                drawOneLine(i, j)
             }
         }
     }
@@ -121,18 +133,10 @@ class MainActivity : AppCompatActivity() {
             for (j in 1..coY) {
                 var k = i.toString() + " " + j.toString()
                 if (coMap.containsKey(k)) {
-                    for (ii in (i - 1) * boxLen until i * boxLen) {
-                        for (jj in (j - 1) * boxLen until j * boxLen) {
-                            b.setPixel(ii, jj, oriColor)
-                        }
-                    }
+                    drawOne(i, j, oriColor)
                 } else {
                     m[k] = 1
-                    for (ii in (i - 1) * boxLen until i * boxLen) {
-                        for (jj in (j - 1) * boxLen until j * boxLen) {
-                            b.setPixel(ii, jj, drawColor)
-                        }
-                    }
+                    drawOne(i, j, drawColor)
                 }
             }
         }
@@ -145,51 +149,36 @@ class MainActivity : AppCompatActivity() {
             if (System.currentTimeMillis() - coMapSi[k]!! < 500)
                 return
         }
+
         coMapSi[k] = System.currentTimeMillis()
         if (invertSw.isChecked) {
             if (coMap.containsKey(k)) {
                 coMap.remove(k);
-                for (ii in (i - 1) * boxLen until i * boxLen) {
-                    for (jj in (j - 1) * boxLen until j * boxLen) {
-                        b.setPixel(ii, jj, oriColor)
-                    }
-                }
+                drawOne(i, j, oriColor)
             } else {
                 coMap[k] = System.currentTimeMillis()
-                for (ii in (i - 1) * boxLen until i * boxLen) {
-                    for (jj in (j - 1) * boxLen until j * boxLen) {
-                        b.setPixel(ii, jj, drawColor)
-                    }
-                }
+                drawOne(i, j, drawColor)
             }
             return
         }
+
         if (drawSw.isChecked) {
             coMap[k] = System.currentTimeMillis()
-            for (ii in (i - 1) * boxLen until i * boxLen) {
-                for (jj in (j - 1) * boxLen until j * boxLen) {
-                    b.setPixel(ii, jj, drawColor)
-                }
-            }
+            drawOne(i, j, drawColor)
             return
         }
         if (coMap.containsKey(k)) {
             coMap.remove(k);
-            for (ii in (i - 1) * boxLen until i * boxLen) {
-                for (jj in (j - 1) * boxLen until j * boxLen) {
-                    b.setPixel(ii, jj, oriColor)
-                }
-            }
+            drawOne(i, j, oriColor)
         }
     }
 
-    @SuppressLint("WrongViewCast")
+    @SuppressLint("WrongViewCast", "ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         ini()
-        drawLine()
         var rl = findViewById<RelativeLayout>(R.id.ll);
         bv = ImageView(this);
         var params = RelativeLayout.LayoutParams(coX * boxLen, coY * boxLen);
@@ -197,16 +186,14 @@ class MainActivity : AppCompatActivity() {
         params.topMargin = 0;
         rl.addView(bv, params);
         bv.setImageBitmap(b)
-
         numText = TextView(this)
         numText.setText("0")
         addui(numText, 200, 50)
-
         setBtn = Button(this)
         setBtn.setText("save")
         addui(setBtn, 200, 150)
         setBtn.setOnClickListener {
-            if (coMap.size==0)
+            if (coMap.size == 0)
                 return@setOnClickListener
             var path: File = baseContext.filesDir
             var file: File = File(path, coMap.size.toString())
@@ -232,26 +219,37 @@ class MainActivity : AppCompatActivity() {
         invertBtn.setText("invert")
         addui(invertBtn, 200, 150)
         clearBtn.setOnClickListener {
+            for (i in 1..coX) {
+                for (j in 1..coY) {
+                    var k = i.toString() + " " + j.toString()
+                    if (coMap.containsKey(k)) {
+                        drawOne(i, j, oriColor)
+                    }
+                }
+            }
             coMap.clear()
-            ini()
-            drawLine()
             numText.setText("0")
             bv.setImageBitmap(b)
         }
+
         invertBtn.setOnClickListener {
             inv()
-            drawLine()
             numText.setText(coMap.size.toString())
             bv.setImageBitmap(b)
         }
+
         loadNum = EditText(this)
         loadNum.setText("0")
         addui(loadNum, 200, 150)
         loadBtn = Button(this)
         loadBtn.setText("load")
         addui(loadBtn, 200, 150)
-        loadBtn.setOnClickListener{
+        loadBtn.setOnClickListener {
             onLoad()
+        }
+        loadBtn.setOnLongClickListener {
+            onLongLoad()
+            true
         }
 
         serveBtn = Button(this)
@@ -281,7 +279,6 @@ class MainActivity : AppCompatActivity() {
                             found = true
                             dealFind(i, j);
                             numText.setText(coMap.size.toString())
-                            drawLine();
                             println("${i},${j}")
                             bv.setImageBitmap(b)
                             break
@@ -291,23 +288,23 @@ class MainActivity : AppCompatActivity() {
                 true
             }
         }
+
         var closeBtn = Button(this)
         closeBtn.setText("close")
         addui(closeBtn, 200, 150)
-        closeBtn.setOnClickListener{
+        closeBtn.setOnClickListener {
             System.exit(0)
         }
     }
-    fun onLoad()
-    {
+
+    fun onLoad() {
         var a = loadNum.text.toString().toInt()
-        for (i in a..coX* coY)
-        {
+        for (i in a..coX * coY) {
             try {
                 var file: File = File(baseContext.filesDir, i.toString())
                 var br = BufferedReader(FileReader(file))
-                coMap.clear()
-                ini()
+                var tempM = HashMap<String, Long>()
+
                 while (true) {
                     var line = br.readLine()
                     if (line == null)
@@ -316,40 +313,55 @@ class MainActivity : AppCompatActivity() {
                     var i = a[0].toInt()
                     var j = a[1].toInt()
                     var k = i.toString() + " " + j.toString()
-                    coMap[k] = 1
-                    for (ii in (i - 1) * boxLen until i * boxLen) {
-                        for (jj in (j - 1) * boxLen until j * boxLen) {
-                            b.setPixel(ii, jj, drawColor)
+                    tempM[k] = 1
+                    if (!coMap.containsKey(k)) {
+                        drawOne(i, j, drawColor)
+                    }
+                }
+                for (i in 1..coX) {
+                    for (j in 1..coY) {
+                        var k = i.toString() + " " + j.toString()
+                        if (coMap.containsKey(k) && !tempM.containsKey(k)) {
+                            drawOne(i, j, oriColor)
                         }
                     }
                 }
-                drawLine()
                 bv.setImageBitmap(b)
+                coMap = tempM
                 numText.setText(coMap.size.toString())
                 loadNum.setText(i.toString())
-
-                for (j in i+1..coX* coY)
-                {
+                for (j in i + 1..coX * coY) {
                     try {
                         var file: File = File(baseContext.filesDir, j.toString())
                         var br = BufferedReader(FileReader(file))
                         loadNum.setText(j.toString())
                         break
-                    }
-                    catch (e:Exception)
-                    {
+                    } catch (e: Exception) {
                     }
                 }
                 break
+            } catch (e: Exception) {
             }
-            catch (e:Exception)
-            {}
         }
     }
-    fun serCha(i:Int)
-    {
+
+    fun onLongLoad() {
+        var a = loadNum.text.toString().toInt()
+        for (i in a..coX * coY) {
+            try {
+                var file: File = File(baseContext.filesDir, i.toString())
+                var br = BufferedReader(FileReader(file))
+            } catch (e: Exception) {
+                loadNum.setText(i.toString())
+                return
+            }
+        }
+    }
+
+    fun serCha(i: Int) {
         serveBtn.setText(i.toString())
     }
+
     fun serOver() {
         serveBtn.isEnabled = true
         serveBtn.setText("serve")
