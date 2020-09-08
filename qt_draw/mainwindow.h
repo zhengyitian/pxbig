@@ -37,6 +37,9 @@ public:
     int coY = 30;
     QLabel * la = new QLabel(this);
     QPushButton* onBtn = new QPushButton(this);
+    QLineEdit* loadNum =new QLineEdit(this);
+
+    QLineEdit* missNum =new QLineEdit(this);
     int sta = 0;
 
     Qt::GlobalColor oriColor = Qt::black,lineColor=Qt::gray,drawColor=Qt::white;
@@ -52,9 +55,13 @@ public:
 
     void iniUI()
     {
+        loadNum->setText("0");
+         missNum->setText("1");
         QVBoxLayout *v = new QVBoxLayout();
         QHBoxLayout *h = new QHBoxLayout();
         v->addWidget(la);
+        v->addWidget(loadNum);
+        v->addWidget(missNum);
         v->addWidget(onBtn);
         onBtn->setText("0");
         h->addStretch();
@@ -167,6 +174,89 @@ public:
         file.flush();
         file.close();
     }
+    int findNextMiss(int a)
+    {
+        for(int i=a;i<300;i++)
+        {
+            auto filename = path+QString::number(i)+".txt";
+            QFile file(filename);
+            if(file.open(QFile::ReadOnly |
+                         QFile::Text))
+            {
+                file.close();
+                continue;
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    int findNextHave(int a)
+    {
+        for(int i=a;i<300;i++)
+        {
+            auto filename = path+QString::number(i)+".txt";
+            QFile file(filename);
+            if(file.open(QFile::ReadOnly |
+                         QFile::Text))
+            {
+                file.close();
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    void load()
+    {
+        auto xx= loadNum->text().toInt();
+        auto i = findNextHave(xx);
+        if (i==-1)return;
+
+        load2(i);
+        auto j = findNextHave(i+1);
+        if(j!=-1)
+            loadNum->setText(QString::number(j));
+        return;
+
+    }
+
+    void load2(int xx)
+    {
+        auto filename = path+QString::number(xx)+".txt";
+        QFile file(filename);
+        if(!file.open(QFile::ReadOnly |
+                      QFile::Text))
+        {
+            qDebug() << " Could not open the file for reading";
+            return;
+        }
+        coMap.clear();
+        lastDrawIm.fill(oriColor);
+        QTextStream in(&file);
+        while (1) {
+            QString myText = in.readLine();
+
+            if(myText == "")
+                break;
+            auto l = myText.split(" ");
+            auto i =l[0].toInt();
+            auto j = l[1].toInt();
+            auto k = QString::number(i)+" "+QString::number(j);
+            coMap[k]=1;
+            for(int ii=(i-1)*boxLen;ii<i*boxLen;ii++)
+            {
+                for(int jj=(j-1)*boxLen;jj<j*boxLen;jj++)
+                {
+                    lastDrawIm.setPixelColor(ii,jj,drawColor);
+                }
+            }
+        }
+        file.close();
+        drawLine();
+        la->setText(QString::number(coMap.size()));
+        update();
+    }
     void read()
     {
         auto filename = "e:/drawinfo/"+QString::number(coMap.size())+".txt";
@@ -192,8 +282,7 @@ public:
 
     bool eventFilter(QObject *obj, QEvent *e)
     {
-        if(obj!=this)
-            return false;
+
         if (e->type()==QEvent::KeyPress )
         {
             QKeyEvent *keyEvent = static_cast<QKeyEvent*>(e);
@@ -204,6 +293,7 @@ public:
                 la->setText(QString::number(coMap.size()));
                 drawLine();
                 update();
+                return true;
             }
             if(keyEvent->key()==87)
             {
@@ -212,10 +302,25 @@ public:
                 drawLine();
                 la->setText("0");
                 update();
+                return true;
             }
             if(keyEvent->key()==81)
             {
                 save();
+                return true;
+            }
+            if(keyEvent->key()==82)
+            {
+                load();
+                return true;
+            }
+            if(keyEvent->key()==70)
+            {
+                auto x = missNum->text().toInt();
+                auto i = findNextMiss(x);
+                if(i!=-1)
+                    missNum->setText(QString::number(i));
+                return true;
             }
             if(keyEvent->key()==65)
             {
@@ -227,11 +332,13 @@ public:
                 }
                 sta=-1;
                 onBtn->setText("-1");
+                return true;
             }
             if(keyEvent->key()==83)
             {
                 sta=0;
                 onBtn->setText("0");
+                return true;
             }
             if(keyEvent->key()==68)
             {
@@ -243,10 +350,13 @@ public:
                 }
                 sta=1;
                 onBtn->setText("1");
+                return true;
             }
 
-            return true;
+            return false;
         }
+        if(obj!=this)
+            return false;
         int tt=0;
 
         if(e->type()==QEvent::MouseMove )
