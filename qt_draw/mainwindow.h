@@ -22,7 +22,7 @@
 #include "qmutex.h"
 #include "qthread.h"
 #include "qdatetime.h"
-const QString path = "/home/a/drawinfo/";
+const QString path = "d:/drawinfo/";
 class MainWindow : public QWidget
 {
     Q_OBJECT

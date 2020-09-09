@@ -59,6 +59,57 @@ class thrC : Thread() {
         upper.runOnUiThread { upper.serOver() }
     }
 }
+class thrC2 : Thread() {
+    lateinit var upper: MainActivity
+    lateinit var path: File
+    fun writeFile(i: Int,b:ByteArray)
+    {
+        try {
+            var file: File = File(path, i.toString())
+            val f = FileOutputStream(file)
+            f.write(b)
+            f.close()
+        } catch (e: Exception) {
+           e.printStackTrace()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    override fun run() {
+        var s = ServerSocketChannel.open()
+        var add = InetSocketAddress("0.0.0.0", 8898)
+        s.bind(add)
+
+        while (true)
+        {
+            var so = s.accept()
+            var aa = ByteBuffer.allocate(4)
+            aa.order(ByteOrder.LITTLE_ENDIAN)
+            so.read(aa)
+            aa.flip()
+            var l = aa.getInt()
+            if(l>300)
+            {
+                so.close()
+                break
+            }
+           aa = ByteBuffer.allocate(10000)
+            var le=0;
+            while(true)
+            {
+                var r =  so.read(aa)
+                if(r<=0)
+                    break
+                le+=r
+            }
+            so.close()
+            writeFile(l,aa.array().sliceArray(0 until le))
+            upper.runOnUiThread { upper.serCha(l) }
+        }
+      s.close()
+        upper.runOnUiThread { upper.serOver() }
+    }
+}
 
 class MainActivity : AppCompatActivity() {
     var lineLen = 1
@@ -261,6 +312,14 @@ class MainActivity : AppCompatActivity() {
             t.path = baseContext.filesDir
             t.start()
             serveBtn.isEnabled = false
+        }
+        serveBtn.setOnLongClickListener {
+            var t = thrC2()
+            t.upper = this
+            t.path = baseContext.filesDir
+            t.start()
+            serveBtn.isEnabled = false
+            true;
         }
         bv.setOnTouchListener { view, motionEvent ->
             var x = motionEvent.getX().toInt()
