@@ -22,6 +22,9 @@
 #include "qmutex.h"
 #include "qthread.h"
 #include "qdatetime.h"
+
+
+// a:draw black s:stop draw d:draw white f:find next miss q:save w:clear e:invert r:load
 const QString path = "d:/drawinfo/";
 class MainWindow : public QWidget
 {
