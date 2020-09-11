@@ -18,6 +18,61 @@ import java.nio.channels.ServerSocketChannel
 
 var coX = 10
 var coY = 30
+var boxLen = 40
+var wiLen = 20
+var wiHei = 80
+var leftM = coX* boxLen+50
+class thrC2 : Thread() {
+    lateinit var upper: MainActivity
+    lateinit var path: File
+    fun writeFile(i: Int,b:ByteArray)
+    {
+        try {
+            var file: File = File(path, i.toString())
+            val f = FileOutputStream(file)
+            f.write(b)
+            f.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+    override fun run() {
+        var s = ServerSocketChannel.open()
+        var add = InetSocketAddress("0.0.0.0", 8898)
+        s.socket().bind(add)
+
+        while (true)
+        {
+            var so = s.accept()
+            var aa = ByteBuffer.allocate(4)
+            aa.order(ByteOrder.LITTLE_ENDIAN)
+            so.read(aa)
+            aa.flip()
+            var l = aa.getInt()
+            if(l>300)
+            {
+                so.close()
+                break
+            }
+            aa = ByteBuffer.allocate(10000)
+            var le=0;
+            while(true)
+            {
+                var r =  so.read(aa)
+                if(r<=0)
+                    break
+                le+=r
+            }
+            so.close()
+            writeFile(l,aa.array().sliceArray(0 until le))
+            upper.runOnUiThread { upper.serCha(l) }
+        }
+        s.close()
+        upper.runOnUiThread { upper.serOver() }
+    }
+}
 
 class thrC : Thread() {
     lateinit var upper: MainActivity
@@ -35,11 +90,12 @@ class thrC : Thread() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
+
     override fun run() {
         var s = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 8898)
-        s.bind(add)
+        s.socket().bind(add)
+     //   s.bind(add)
         for (i in 0..coX * coY) {
             var b = getF(i)
             if (b.size == 0)
@@ -59,61 +115,10 @@ class thrC : Thread() {
         upper.runOnUiThread { upper.serOver() }
     }
 }
-class thrC2 : Thread() {
-    lateinit var upper: MainActivity
-    lateinit var path: File
-    fun writeFile(i: Int,b:ByteArray)
-    {
-        try {
-            var file: File = File(path, i.toString())
-            val f = FileOutputStream(file)
-            f.write(b)
-            f.close()
-        } catch (e: Exception) {
-           e.printStackTrace()
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.N)
-    override fun run() {
-        var s = ServerSocketChannel.open()
-        var add = InetSocketAddress("0.0.0.0", 8898)
-        s.bind(add)
-
-        while (true)
-        {
-            var so = s.accept()
-            var aa = ByteBuffer.allocate(4)
-            aa.order(ByteOrder.LITTLE_ENDIAN)
-            so.read(aa)
-            aa.flip()
-            var l = aa.getInt()
-            if(l>300)
-            {
-                so.close()
-                break
-            }
-           aa = ByteBuffer.allocate(10000)
-            var le=0;
-            while(true)
-            {
-                var r =  so.read(aa)
-                if(r<=0)
-                    break
-                le+=r
-            }
-            so.close()
-            writeFile(l,aa.array().sliceArray(0 until le))
-            upper.runOnUiThread { upper.serCha(l) }
-        }
-      s.close()
-        upper.runOnUiThread { upper.serOver() }
-    }
-}
 
 class MainActivity : AppCompatActivity() {
     var lineLen = 1
-    var boxLen = 60
+
 
     var oriColor = Color.BLACK
     var lineColor = Color.GRAY
@@ -138,9 +143,9 @@ class MainActivity : AppCompatActivity() {
     fun addui(a: View, wi: Int, he: Int) {
         var rl = findViewById<RelativeLayout>(R.id.ll);
         var params = RelativeLayout.LayoutParams(wi, he);
-        params.leftMargin = 700;
+        params.leftMargin = leftM;
         params.topMargin = topM;
-        topM += he + 50
+        topM += he + wiLen
         rl.addView(a, params);
     }
 
@@ -239,10 +244,10 @@ class MainActivity : AppCompatActivity() {
         bv.setImageBitmap(b)
         numText = TextView(this)
         numText.setText("0")
-        addui(numText, 200, 50)
+        addui(numText, 200, wiHei)
         setBtn = Button(this)
         setBtn.setText("save")
-        addui(setBtn, 200, 150)
+        addui(setBtn, 200,wiHei )
         setBtn.setOnClickListener {
             if (coMap.size == 0)
                 return@setOnClickListener
@@ -258,17 +263,17 @@ class MainActivity : AppCompatActivity() {
 
         drawSw = Switch(this)
         drawSw.setText("draw")
-        addui(drawSw, 200, 150)
+        addui(drawSw, 200, wiHei)
 
         invertSw = Switch(this)
         invertSw.setText("invert")
-        addui(invertSw, 200, 150)
+        addui(invertSw, 200, wiHei)
         clearBtn = Button(this)
         clearBtn.setText("clear")
-        addui(clearBtn, 200, 150)
+        addui(clearBtn, 200, wiHei)
         invertBtn = Button(this)
         invertBtn.setText("invert")
-        addui(invertBtn, 200, 150)
+        addui(invertBtn, 200, wiHei)
         clearBtn.setOnClickListener {
             for (i in 1..coX) {
                 for (j in 1..coY) {
@@ -291,10 +296,10 @@ class MainActivity : AppCompatActivity() {
 
         loadNum = EditText(this)
         loadNum.setText("0")
-        addui(loadNum, 200, 150)
+        addui(loadNum, 200, wiHei)
         loadBtn = Button(this)
         loadBtn.setText("load")
-        addui(loadBtn, 200, 150)
+        addui(loadBtn, 200, wiHei)
         loadBtn.setOnClickListener {
             onLoad()
         }
@@ -305,7 +310,7 @@ class MainActivity : AppCompatActivity() {
 
         serveBtn = Button(this)
         serveBtn.setText("serve")
-        addui(serveBtn, 200, 150)
+        addui(serveBtn, 200, wiHei)
         serveBtn.setOnClickListener {
             var t = thrC()
             t.upper = this
@@ -350,7 +355,7 @@ class MainActivity : AppCompatActivity() {
 
         var closeBtn = Button(this)
         closeBtn.setText("close")
-        addui(closeBtn, 200, 150)
+        addui(closeBtn, 200, wiHei)
         closeBtn.setOnClickListener {
             System.exit(0)
         }
