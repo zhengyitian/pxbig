@@ -25,8 +25,8 @@ var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
 var g_reso = 0
-var maxX = 1000
-var maxY = 1000
+var maxX = 700
+var maxY = 700
 var pause = false
 
 class pointItem(var x: Int, var y: Int) {
@@ -88,8 +88,11 @@ class RepeatListener(
 class recvThr : Thread() {
     var ip = ""
     lateinit var path: File
+    var ipR=""
+    var ip2 = "127.0.0.1"
+
     fun w() {
-        var add = InetSocketAddress(ip, 8898)
+        var add = InetSocketAddress(ipR, 8898)
         var so = SocketChannel.open()
         so.connect(add)
         var b = ByteBuffer.allocate(4)
@@ -112,11 +115,16 @@ class recvThr : Thread() {
     }
 
     override fun run() {
+        ipR = ip
         while (true) {
             try {
                 w()
             } catch (e: java.lang.Exception) {
                 Thread.sleep(1000)
+                if(ipR==ip)
+                    ipR = ip2
+                else
+                    ipR = ip
             }
         }
     }
@@ -129,7 +137,7 @@ class thrC : Thread() {
 
     var reso = 0;
     var drawInfo = HashMap<Int, ArrayList<pointItem>>()
-var maxWaitTime = 5*1000.toLong()
+    var maxWaitTime = 5*1000.toLong()
 
     fun iniOne(i: Int) {
         var l = ArrayList<pointItem>()
@@ -291,7 +299,7 @@ var maxWaitTime = 5*1000.toLong()
             s.write(b)
             var ss = ByteBuffer.allocate(xl * yl * 4)
             var re = 0
-         var   se = Selector.open()
+            var   se = Selector.open()
             s.register(se,SelectionKey.OP_READ)
             while (re != xl * yl * 4) {
                 se.select(maxWaitTime+100)
@@ -543,7 +551,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun show(bitmap: Bitmap) {
-        if (pause)
+        if(pause)
             return
         findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
     }
