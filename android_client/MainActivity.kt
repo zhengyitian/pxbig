@@ -88,7 +88,7 @@ class RepeatListener(
 class recvThr : Thread() {
     var ip = ""
     lateinit var path: File
-    var ipR=""
+    var ipR = ""
     var ip2 = "127.0.0.1"
 
     fun w() {
@@ -121,7 +121,7 @@ class recvThr : Thread() {
                 w()
             } catch (e: java.lang.Exception) {
                 Thread.sleep(1000)
-                if(ipR==ip)
+                if (ipR == ip)
                     ipR = ip2
                 else
                     ipR = ip
@@ -137,7 +137,7 @@ class thrC : Thread() {
 
     var reso = 0;
     var drawInfo = HashMap<Int, ArrayList<pointItem>>()
-    var maxWaitTime = 5*1000.toLong()
+    var maxWaitTime = 5 * 1000.toLong()
 
     fun iniOne(i: Int) {
         var l = ArrayList<pointItem>()
@@ -147,24 +147,22 @@ class thrC : Thread() {
             var line = br.readLine()
             if (line == null)
                 break
-            var a= line.split(" ")
-            l.add(pointItem(a[0].toInt()-1,a[1].toInt()-1))
+            var a = line.split(" ")
+            l.add(pointItem(a[0].toInt() - 1, a[1].toInt() - 1))
         }
         drawInfo[i] = l
     }
 
     fun iniD() {
-        for(i in 0..300)
-        {
+        for (i in 0..300) {
             try {
                 iniOne(i)
+            } catch (e: Exception) {
             }
-            catch (e:Exception)
-            {}
         }
     }
 
-    fun drawOne(ty: Int, v: Int, i: Int, j: Int, col: Int, im: Bitmap) {
+    fun drawOne(ty: Int, v: Int, i: Int, j: Int,br:ByteArray,xll:Int) {
         var redCount = v * reso * reso / 3 / 255;
         var gap = reso / 3 * ty;
 
@@ -173,11 +171,14 @@ class thrC : Thread() {
             var dy = j * reso;
             for (ii in i * reso + gap until gap + i * reso + reso / 3) {
                 for (jj in j * reso until (j + 1) * reso) {
-                    im.setPixel(ii, jj, Color.BLACK)
+                    var va = (ii+jj*xll)*4
+                    br[va+3]=-1
                 }
             }
             for (p in drawInfo[redCount]!!) {
-                im.setPixel(di + p.x, dy + p.y, col)
+                var va = ((di + p.x)+( dy + p.y)*xll)*4
+                br[va+3]=-1
+                br[va+ty]=-1
             }
             return;
         }
@@ -185,11 +186,12 @@ class thrC : Thread() {
         var redCo = 0;
         for (ii in i * reso + gap until gap + i * reso + reso / 3) {
             for (jj in j * reso until (j + 1) * reso) {
+                var va = (ii+jj*xll)*4
+                br[va+3]=-1
                 if (redCo >= redCount) {
-                    im.setPixel(ii, jj, Color.BLACK)
                     continue
                 }
-                im.setPixel(ii, jj, col)
+                br[va+ty]=-1
                 redCo += 1;
             }
         }
@@ -203,10 +205,9 @@ class thrC : Thread() {
         if (yl * reso < maxY)
             pb = yl * reso;
         var bb = Bitmap.createBitmap(pa, pb, Bitmap.Config.ARGB_8888)
-
+        var br = ByteArray(pa * pb * 4)
         for (j in 0 until yl) {
             for (i in 0 until xl) {
-
                 if ((i + 1) * reso > maxX || (j + 1) * reso > maxY) {
                     ss.getInt()
                 } else {
@@ -220,12 +221,13 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
-                    drawOne(0, r, i, j, Color.RED, bb);
-                    drawOne(1, g, i, j, Color.GREEN, bb);
-                    drawOne(2, b, i, j, Color.BLUE, bb);
+                    drawOne(0, r, i, j, br,pa);
+                    drawOne(1, g, i, j, br,pa);
+                    drawOne(2, b, i, j, br,pa);
                 }
             }
         }
+        bb.copyPixelsFromBuffer(ByteBuffer.wrap(br))
         return bb
     }
 
@@ -260,23 +262,20 @@ class thrC : Thread() {
                 upper.runOnUiThread({ upper.show(bb) })
                 continue
             }
-
             var bb = Bitmap.createBitmap(xl, yl, Bitmap.Config.ARGB_8888)
+            var br = ByteArray(xl * yl * 4)
             for (j in 0 until yl) {
                 for (i in 0 until xl) {
-                    var r = ss.get().toInt()
-                    var g = ss.get().toInt()
-                    var b = ss.get().toInt()
+                    var va = (i + xl * j) * 4
+                    br[va] = ss.get()
+                    br[va + 1] = ss.get()
+                    br[va + 2] = ss.get()
                     ss.get()
-                    if (r < 0)
-                        r += 256
-                    if (g < 0)
-                        g += 256
-                    if (b < 0)
-                        b += 256
-                    bb.setPixel(i, j, Color.rgb(r, g, b))
+                    br[va + 3] = -1
                 }
             }
+            var b = ByteBuffer.wrap(br)
+            bb.copyPixelsFromBuffer(b)
             upper.runOnUiThread({ upper.show(bb) })
         }
     }
@@ -299,12 +298,11 @@ class thrC : Thread() {
             s.write(b)
             var ss = ByteBuffer.allocate(xl * yl * 4)
             var re = 0
-            var   se = Selector.open()
-            s.register(se,SelectionKey.OP_READ)
+            var se = Selector.open()
+            s.register(se, SelectionKey.OP_READ)
             while (re != xl * yl * 4) {
-                se.select(maxWaitTime+100)
-                if(System.currentTimeMillis()-sT>maxWaitTime)
-                {
+                se.select(maxWaitTime + 100)
+                if (System.currentTimeMillis() - sT > maxWaitTime) {
                     s.close()
                     se.close()
                     return ByteBuffer.allocate(0)
@@ -551,7 +549,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun show(bitmap: Bitmap) {
-        if(pause)
+        if (pause)
             return
         findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
     }
