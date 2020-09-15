@@ -14,6 +14,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.text.Html
 import android.util.DisplayMetrics
 import android.view.MotionEvent
 import android.view.View
@@ -35,6 +36,7 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import kotlin.experimental.and
+
 class RepeatListener(
     initialInterval: Int, normalInterval: Int,
     clickListener: View.OnClickListener?
@@ -87,6 +89,7 @@ class RepeatListener(
         this.clickListener = clickListener
     }
 }
+
 var con_width = 2244
 var con_height = 2244
 
@@ -295,8 +298,12 @@ class MainActivity : AppCompatActivity() {
     var dataLen_b = 0
     lateinit var audio: AudioTrack
     var hasStop = false
-var fixed = false
+    var fixed = false
     var fixV = 0
+    var cat = true
+    var firstCat = true
+    var catB = 0
+    var catE = 0
 
     fun writeAudioDataToFile(i: Int) {
         dataLen = 0
@@ -449,6 +456,10 @@ var fixed = false
         System.exit(0)
     }
 
+    fun showCha() {
+        findViewById<TextView>(R.id.textViewcha).setText(soundData[findViewById<SeekBar>(R.id.seekBar3).progress].toString())
+    }
+
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
@@ -456,24 +467,105 @@ var fixed = false
         setContentView(R.layout.activity_main)
         findViewById<Button>(R.id.fixbtn).setOnClickListener {
             fixed = !fixed
-            if(fixed)
-            {
+            if (fixed) {
                 findViewById<Button>(R.id.fixbtn).setText("f")
-                fixV =  findViewById<SeekBar>(R.id.seekBar3).progress- findViewById<SeekBar>(R.id.seekBar4).progress
-            }
-            else
+                fixV =
+                    findViewById<SeekBar>(R.id.seekBar3).progress - findViewById<SeekBar>(R.id.seekBar4).progress
+            } else
                 findViewById<Button>(R.id.fixbtn).setText("n")
+        }
+        findViewById<Button>(R.id.catbtn).setOnClickListener {
+            cat = !cat
+            if(firstCat)
+            {
+                firstCat = false
+                cat = true
+            }
+            if (cat) {
+                findViewById<Button>(R.id.catbtn).setText("ov")
+                catB = findViewById<SeekBar>(R.id.seekBar3).progress
+            } else {
+                findViewById<Button>(R.id.catbtn).setText("cat")
+                catE = findViewById<SeekBar>(R.id.seekBar3).progress
+            }
+        }
+        findViewById<Button>(R.id.btnc2).setOnClickListener {
+            if (cat) {
+                soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
+                    (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] * 2).toShort()
+                showCha()
+                return@setOnClickListener
+            }
+
+            for (i in catB until catE) {
+                if (soundData[i] * 2 > Short.MAX_VALUE)
+                    soundData[i] = Short.MAX_VALUE
+                else if (soundData[i] * 2 < Short.MIN_VALUE)
+                    soundData[i] = Short.MIN_VALUE
+                else
+                    soundData[i] = (soundData[i] * 2).toShort()
+            }
+            showCha()
+        }
+        findViewById<Button>(R.id.btnchu2).setOnClickListener {
+            if (cat) {
+                soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
+                    (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] / 2).toShort()
+                showCha()
+                return@setOnClickListener
+            }
+
+            for (i in catB until catE) {
+                soundData[i] = (soundData[i] / 2).toShort()
+            }
+            showCha()
         }
 
         findViewById<Button>(R.id.button).setOnClickListener { q() }
-        findViewById<Button>(R.id.jianyi).setOnClickListener {
-            soundData[ findViewById<SeekBar>(R.id.seekBar3).progress] =
-                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress]-1.toShort()).toShort()
-        }
-        findViewById<Button>(R.id.jiayi).setOnClickListener {
-            soundData[ findViewById<SeekBar>(R.id.seekBar3).progress] =
-                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress]+1.toShort()).toShort()
-        }
+
+        findViewById<Button>(R.id.jianyi).setOnTouchListener(
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        if (cat) {
+                            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
+                                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] - 1).toShort()
+                            showCha()
+                            return
+                        }
+                        for (i in catB until catE) {
+
+                            if (soundData[i] - 1 < Short.MIN_VALUE)
+                                soundData[i] = Short.MIN_VALUE
+                            else
+                                soundData[i] = (soundData[i] - 1).toShort()
+                        }
+                        showCha()
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.jiayi).setOnTouchListener(
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        if (cat) {
+                            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
+                                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] + 1).toShort()
+                            showCha()
+                            return
+                        }
+                        for (i in catB until catE) {
+                            if (soundData[i] + 1 > Short.MAX_VALUE)
+                                soundData[i] = Short.MAX_VALUE
+                            else
+                                soundData[i] = (soundData[i] + 1).toShort()
+                        }
+                        showCha()
+                    }
+                })
+        )
+
         findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop = true }
 
         findViewById<Button>(R.id.playBtn).setOnClickListener {
@@ -533,13 +625,27 @@ var fixed = false
                 progress: Int,
                 fromUser: Boolean
             ) {
+                if(fromUser)
+                {
+                    fixed = false
+                    findViewById<Button>(R.id.fixbtn).setText("n")
+                }
                 findViewById<TextView>(R.id.seekBarText3).setText(progress.toString())
                 var st = ""
-                for (i in 0..100)
-                {
-                    st+=","+soundData[progress+i].toString()
+
+                for (i in 0..80) {
+
+                    var ss = soundData[progress + i].toString()
+                    if( soundData[progress + i]>0)
+                    {
+                        st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+                    }
+                    else
+                    {
+                        st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
+                    }
                 }
-                findViewById<TextView>(R.id.textView).setText(st)
+                findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -553,10 +659,9 @@ var fixed = false
                 progress: Int,
                 fromUser: Boolean
             ) {
-           //     findViewById<TextView>(R.id.seekBarText4).setText(progress.toString())
-                if(fixed)
-                {
-                    findViewById<SeekBar>(R.id.seekBar3).setProgress(fixV+progress)
+                //     findViewById<TextView>(R.id.seekBarText4).setText(progress.toString())
+                if (fixed) {
+                    findViewById<SeekBar>(R.id.seekBar3).setProgress(fixV + progress)
                 }
             }
 
