@@ -16,7 +16,7 @@
         <ImageView
             android:id="@+id/imageView"
             android:layout_width="400dp"
-            android:layout_height="100dp"
+            android:layout_height="69dp"
             tools:srcCompat="@tools:sample/avatars" />
 
         <LinearLayout

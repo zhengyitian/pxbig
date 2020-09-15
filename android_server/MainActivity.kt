@@ -19,12 +19,10 @@ import android.util.DisplayMetrics
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.SeekBar
-import android.widget.TextView
+import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
@@ -37,6 +35,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import kotlin.experimental.and
 
+var full_version = true
 class RepeatListener(
     initialInterval: Int, normalInterval: Int,
     clickListener: View.OnClickListener?
@@ -305,7 +304,7 @@ class MainActivity : AppCompatActivity() {
     var catB = 0
     var catE = 0
 
-    fun writeAudioDataToFile(i: Int) {
+    fun writeAudioDataToFile() {
         dataLen = 0
         while (true) {
             if (hasStop) {
@@ -328,12 +327,12 @@ class MainActivity : AppCompatActivity() {
 
     fun iniAudio(i: Int) {
         try {
-            var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
-                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                .build();
-            if (i == 1) {
+            if (i == 1&& full_version) {
+                var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
+                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                    .build();
                 recorder = AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
                     AudioFormat.Builder()
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -357,7 +356,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             recorder.startRecording();
-            var tt = Thread(Runnable { writeAudioDataToFile(i); })
+            var tt = Thread(Runnable { writeAudioDataToFile(); })
             tt.start()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -446,11 +445,15 @@ class MainActivity : AppCompatActivity() {
             worker.mResultData = data.clone() as Intent
             worker.isDaemon = true
             worker.start()
-
         }
     }
 
     fun q() {
+        if(!full_version)
+        {
+            System.exit(0)
+            return
+        }
         worker.q()
         stopService(ii)
         System.exit(0)
@@ -460,11 +463,16 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.textViewcha).setText(soundData[findViewById<SeekBar>(R.id.seekBar3).progress].toString())
     }
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        if(!full_version)
+        {
+            var params =LinearLayout.LayoutParams(1, 1);
+            findViewById<ImageView>(R.id.imageView).layoutParams = params
+        }
         findViewById<Button>(R.id.fixbtn).setOnClickListener {
             fixed = !fixed
             if (fixed) {
@@ -685,10 +693,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         )
+        if(full_version)
+        {
+            var projectionManager =
+                getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
+        }
 
-        var projectionManager =
-            getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
     }
 
     fun recordOver() {
