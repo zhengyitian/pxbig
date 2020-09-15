@@ -13,7 +13,10 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.DisplayMetrics
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
@@ -32,7 +35,58 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import kotlin.experimental.and
+class RepeatListener(
+    initialInterval: Int, normalInterval: Int,
+    clickListener: View.OnClickListener?
+) : View.OnTouchListener {
+    private val handler: Handler = Handler()
+    private val initialInterval: Int
+    private val normalInterval: Int
+    private val clickListener: View.OnClickListener
+    private var touchedView: View? = null
+    private val handlerRunnable: Runnable = object : Runnable {
+        override fun run() {
+            if (touchedView?.isEnabled()!!) {
+                handler.postDelayed(this, normalInterval.toLong())
+                if (clickListener != null) {
+                    clickListener.onClick(touchedView)
+                }
+            } else {
+                handler.removeCallbacks(this)
+                touchedView!!.setPressed(false)
+                touchedView = null
+            }
+        }
+    }
 
+    override fun onTouch(view: View?, motionEvent: MotionEvent): Boolean {
+        when (motionEvent.action) {
+            MotionEvent.ACTION_DOWN -> {
+                handler.removeCallbacks(handlerRunnable)
+                handler.postDelayed(handlerRunnable, initialInterval.toLong())
+                touchedView = view
+                touchedView?.setPressed(true)
+                clickListener.onClick(view)
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(handlerRunnable)
+                touchedView?.setPressed(false)
+                touchedView = null
+                return true
+            }
+        }
+        return false
+    }
+
+    init {
+        requireNotNull(clickListener) { "null runnable" }
+        require(!(initialInterval < 0 || normalInterval < 0)) { "negative interval" }
+        this.initialInterval = initialInterval
+        this.normalInterval = normalInterval
+        this.clickListener = clickListener
+    }
+}
 var con_width = 2244
 var con_height = 2244
 
@@ -198,7 +252,8 @@ class thr : Thread() {
                     var startPos = xbegin + j * 2244
                     var endPos = xbegin + j * 2244 + xlen
                     bb.put(
-                        uncompressedBuffer.array().slice(startPos * 4 until endPos * 4).toByteArray()
+                        uncompressedBuffer.array().slice(startPos * 4 until endPos * 4)
+                            .toByteArray()
                     )
                 }
                 bb.flip()
@@ -234,35 +289,33 @@ class MainActivity : AppCompatActivity() {
     var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
     var BytesPerElement = 2; // 2 bytes in 16bit format
 
-    var soundData = ByteArray(0)
+    var soundData = ShortArray(1024 * 1024 * 6)
+    var dataLen = 0
+    var soundData_b = ShortArray(1024 * 1024 * 6)
+    var dataLen_b = 0
     lateinit var audio: AudioTrack
-    var hasStop=false
-    var b = ByteBuffer.allocate(1024 * 1024 * 6)
-    fun writeAudioDataToFile(i:Int) {
-      b.clear()
-        val sData = ShortArray(BufferElements2Rec)
-        var co = 0
+    var hasStop = false
+var fixed = false
+    var fixV = 0
+
+    fun writeAudioDataToFile(i: Int) {
+        dataLen = 0
         while (true) {
-            if(hasStop)
-            {
-                hasStop=false
+            if (hasStop) {
+                hasStop = false
                 break
             }
-            recorder.read(sData, 0, BufferElements2Rec)
-            val bData: ByteArray = util.short2byte(sData)
-            co += bData.size
-            b.put(bData)
-            if (co > 1024 * 1024 * 5)
+            recorder.read(soundData, dataLen, BufferElements2Rec)
+            dataLen += BufferElements2Rec
+
+            if (dataLen > 1024 * 1024 * 5)
                 break
         }
+
         recorder.stop()
         recorder.release()
-        soundData = b.array().sliceArray(0 until co)
         this.runOnUiThread {
-            if(i==1)
-            findViewById<Button>(R.id.startBtn).isEnabled = true
-            else
-                findViewById<Button>(R.id.startoutBtn).isEnabled = true
+            recordOver()
         }
     }
 
@@ -305,22 +358,28 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    fun doPlay(j:Float) {
-        var soundData2 = soundData
-        var co = (j*soundData2.size).toInt()
-        if(co%2==1)
-            co += 1
-        var writeLen = 2048
-        while (true)
-        {
-            if(hasStop)
-            {
+    fun doPlay(j: Float) {
+        var dataLen2 = dataLen
+        var soundData2 = soundData.slice(0 until dataLen).toShortArray()
+        var co = (j * dataLen2).toInt()
+        var writeLen = 1024
+        while (true) {
+            if (hasStop) {
                 hasStop = false
                 break
             }
-            if (co+writeLen>soundData2.size)
+            if (co + writeLen > dataLen2)
                 break
-            audio.write(soundData2, co,writeLen)
+            var bb = soundData2.slice(co until co + writeLen).toShortArray()
+//            for (i in bb)
+//            {
+//                if(i>1000.toShort())
+//                {
+//                  hasStop = false
+//                }
+//            }
+            var d = util.short2byte(bb)
+            audio.write(d, 0, writeLen * 2)
             co += writeLen
         }
         audio.stop()
@@ -331,7 +390,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun play() {
-        var i = findViewById<SeekBar>(R.id.seekBar).progress.toFloat()  *3/ findViewById<SeekBar>(R.id.seekBar).max.toFloat()
+        var i =
+            findViewById<SeekBar>(R.id.seekBar).progress.toFloat() * 3 / findViewById<SeekBar>(R.id.seekBar).max.toFloat()
         i += 0.1.toFloat()
 
         var bufsize = AudioTrack.getMinBufferSize(
@@ -349,7 +409,8 @@ class MainActivity : AppCompatActivity() {
             AudioTrack.MODE_STREAM
         );
         audio.play()
-        var j = findViewById<SeekBar>(R.id.seekBar2).progress.toFloat()  / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
+        var j =
+            findViewById<SeekBar>(R.id.seekBar2).progress.toFloat() / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
         var tt = Thread(Runnable { doPlay(j); })
         tt.start()
     }
@@ -382,7 +443,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     fun q() {
         worker.q()
         stopService(ii)
@@ -391,10 +451,30 @@ class MainActivity : AppCompatActivity() {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
+        this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        findViewById<Button>(R.id.fixbtn).setOnClickListener {
+            fixed = !fixed
+            if(fixed)
+            {
+                findViewById<Button>(R.id.fixbtn).setText("f")
+                fixV =  findViewById<SeekBar>(R.id.seekBar3).progress- findViewById<SeekBar>(R.id.seekBar4).progress
+            }
+            else
+                findViewById<Button>(R.id.fixbtn).setText("n")
+        }
+
         findViewById<Button>(R.id.button).setOnClickListener { q() }
-        findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop=true }
+        findViewById<Button>(R.id.jianyi).setOnClickListener {
+            soundData[ findViewById<SeekBar>(R.id.seekBar3).progress] =
+                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress]-1.toShort()).toShort()
+        }
+        findViewById<Button>(R.id.jiayi).setOnClickListener {
+            soundData[ findViewById<SeekBar>(R.id.seekBar3).progress] =
+                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress]+1.toShort()).toShort()
+        }
+        findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop = true }
 
         findViewById<Button>(R.id.playBtn).setOnClickListener {
             findViewById<Button>(R.id.playBtn).isEnabled = false
@@ -402,11 +482,13 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.startBtn).setOnClickListener {
             findViewById<Button>(R.id.startBtn).isEnabled = false
+            findViewById<Button>(R.id.startoutBtn).isEnabled = false
             iniAudio(1)
         }
 
         findViewById<Button>(R.id.startoutBtn).setOnClickListener {
             findViewById<Button>(R.id.startoutBtn).isEnabled = false
+            findViewById<Button>(R.id.startBtn).isEnabled = false
             iniAudio(2)
         }
         findViewById<Button>(R.id.jianBtn).setOnClickListener {
@@ -444,9 +526,72 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
+        findViewById<SeekBar>(R.id.seekBar3).setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                findViewById<TextView>(R.id.seekBarText3).setText(progress.toString())
+                var st = ""
+                for (i in 0..100)
+                {
+                    st+=","+soundData[progress+i].toString()
+                }
+                findViewById<TextView>(R.id.textView).setText(st)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
+        findViewById<SeekBar>(R.id.seekBar4).max = 2500
+        findViewById<SeekBar>(R.id.seekBar4).setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+           //     findViewById<TextView>(R.id.seekBarText4).setText(progress.toString())
+                if(fixed)
+                {
+                    findViewById<SeekBar>(R.id.seekBar3).setProgress(fixV+progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
+
+        findViewById<Button>(R.id.bigjianbtn).setOnTouchListener(
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
+                    }
+                })
+        )
+        findViewById<Button>(R.id.bigjiabtn).setOnTouchListener(
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
+                    }
+                })
+        )
+
         var projectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
+    }
+
+    fun recordOver() {
+        findViewById<Button>(R.id.startBtn).isEnabled = true
+        findViewById<Button>(R.id.startoutBtn).isEnabled = true
+        soundData_b = soundData
+        dataLen_b = dataLen
+        findViewById<SeekBar>(R.id.seekBar3).max = dataLen
     }
 
     fun showImg(b: Bitmap) {
