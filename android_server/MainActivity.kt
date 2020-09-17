@@ -476,41 +476,41 @@ class MainActivity : AppCompatActivity() {
             return Short.MIN_VALUE
         return a.toShort()
     }
-fun dealCha(met:(i:Short)->Int)
-{
-    if (cat) {
-        soundData[findViewById<SeekBar>(R.id.seekBar3).progress] = floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
-       showVal()
-        return
-    }
-
-    for (i in catB .. catE) {
-        soundData[i] = floorV(met(soundData[i]))
-    }
-    showVal()
-}
-
-fun showVal()
-{
-  var progress=  findViewById<SeekBar>(R.id.seekBar3).progress
-    progress = progress - (progress%6)
-    var st = "${progress}<br/>"
-    for (i in 0 until 6*12) {
-        var ss = soundData[progress + i].toString()
-        if( soundData[progress + i]>0)
-        {
-            st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+    fun dealCha(met:(i:Short)->Int)
+    {
+        if (cat) {
+            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] = floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
+            showVal()
+            return
         }
-        else
-        {
-            st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
+
+        for (i in catB .. catE) {
+            soundData[i] = floorV(met(soundData[i]))
         }
-        if((i+1)%6==0 && i!=6*12-1)
-            st+="<br/>"
+        showVal()
     }
 
-    findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
-}
+    fun showVal()
+    {
+        var progress=  findViewById<SeekBar>(R.id.seekBar3).progress
+        progress = progress - (progress%6)
+        var st = "${progress}<br/>"
+        for (i in 0 until 6*12) {
+            var ss = soundData[progress + i].toString()
+            if( soundData[progress + i]>0)
+            {
+                st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+            }
+            else
+            {
+                st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
+            }
+            if((i+1)%6==0 && i!=6*12-1)
+                st+="<br/>"
+        }
+
+        findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
@@ -549,7 +549,7 @@ fun showVal()
             dealCha { it*2 }
         }
         findViewById<Button>(R.id.btnchu2).setOnClickListener {
-dealCha { it/2 }
+            dealCha { it/2 }
         }
 
         findViewById<Button>(R.id.button).setOnClickListener { q() }
@@ -558,7 +558,7 @@ dealCha { it/2 }
             RepeatListener(400, 30,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                      dealCha { it-1 }
+                        dealCha { it-1 }
                     }
                 })
         )
@@ -588,7 +588,10 @@ dealCha { it/2 }
                     }
                 })
         )
-
+        findViewById<Button>(R.id.rebtn).setOnClickListener {
+            soundData = soundData_b.copyOf()
+            dataLen = dataLen_b
+        }
         findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop = true }
 
         findViewById<Button>(R.id.playBtn).setOnClickListener {
@@ -654,7 +657,7 @@ dealCha { it/2 }
                     findViewById<Button>(R.id.fixbtn).setText("n")
                 }
                 findViewById<TextView>(R.id.seekBarText3).setText(progress.toString())
-            showVal()
+                showVal()
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -706,7 +709,7 @@ dealCha { it/2 }
     fun recordOver() {
         findViewById<Button>(R.id.startBtn).isEnabled = true
         findViewById<Button>(R.id.startoutBtn).isEnabled = true
-        soundData_b = soundData
+        soundData_b = soundData.copyOf()
         dataLen_b = dataLen
         findViewById<SeekBar>(R.id.seekBar3).max = dataLen
     }
