@@ -25,7 +25,12 @@
 
 
 // a:draw black s:stop draw d:draw white f:find next miss q:save w:clear e:invert r:load
+
+//config before compile
+//drawinfo dir
 const QString path = "d:/drawinfo/";
+//end of config
+
 class MainWindow : public QWidget
 {
     Q_OBJECT

@@ -15,13 +15,15 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.ServerSocketChannel
-
+//config before compile
 var coX = 10
 var coY = 30
-var boxLen = 40
-var wiLen = 20
-var wiHei = 80
+var boxLen = 40 // draw box length
+var wiLen = 20 // space between widgets
+var wiHei = 80 //widget height
 var leftM = coX* boxLen+50
+//end of config
+
 class thrC2 : Thread() {
     lateinit var upper: MainActivity
     lateinit var path: File
@@ -95,7 +97,7 @@ class thrC : Thread() {
         var s = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 8898)
         s.socket().bind(add)
-     //   s.bind(add)
+        //   s.bind(add)
         for (i in 0..coX * coY) {
             var b = getF(i)
             if (b.size == 0)

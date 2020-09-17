@@ -19,14 +19,21 @@ import java.nio.channels.Selector
 import java.nio.channels.SocketChannel
 
 
+//config before compile
+//biggest size of picture shown
+//samsung c5 1000
+//redmi 3s 700
+var maxX = 1000
+var maxY = 1000
+//end of config
+
 var xs = 0
 var ys = 0
 var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
 var g_reso = 0
-var maxX = 1000
-var maxY = 1000
+
 var pause = false
 
 class pointItem(var x: Int, var y: Int) {

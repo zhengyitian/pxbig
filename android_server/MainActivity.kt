@@ -34,8 +34,17 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import kotlin.experimental.and
-
+//config before compile
+//full_version with screen captrued and internal sound record(needs android 10),otherwise only external sound record.
 var full_version = true
+
+//screen size to capture
+//huawei p20 2244 2244
+var con_width = 2244
+var con_height = 2244
+
+//end of config
+
 class RepeatListener(
     initialInterval: Int, normalInterval: Int,
     clickListener: View.OnClickListener?
@@ -89,8 +98,7 @@ class RepeatListener(
     }
 }
 
-var con_width = 2244
-var con_height = 2244
+
 
 lateinit var g_med: MediaProjection
 
