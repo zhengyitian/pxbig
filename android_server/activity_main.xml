@@ -198,13 +198,19 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="+1" />
-
             <Button
-                android:id="@+id/catbtn"
+                android:id="@+id/jianershi"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="cat" />
+                android:text="-100" />
+
+            <Button
+                android:id="@+id/jiaershi"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="+100" />
 
             <Button
                 android:id="@+id/btnc2"
@@ -243,6 +249,13 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="TextView" />
+
+            <Button
+                android:id="@+id/catbtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="cat" />
         </LinearLayout>
 
     </LinearLayout>

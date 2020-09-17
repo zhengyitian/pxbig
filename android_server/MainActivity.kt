@@ -459,11 +459,50 @@ class MainActivity : AppCompatActivity() {
         System.exit(0)
     }
 
-    fun showCha() {
-        findViewById<TextView>(R.id.textViewcha).setText(soundData[findViewById<SeekBar>(R.id.seekBar3).progress].toString())
+
+    fun floorV(a:Int):Short
+    {
+        if(a>Short.MAX_VALUE)
+            return Short.MAX_VALUE
+        if(a<Short.MIN_VALUE)
+            return Short.MIN_VALUE
+        return a.toShort()
+    }
+fun dealCha(met:(i:Short)->Int)
+{
+    if (cat) {
+        soundData[findViewById<SeekBar>(R.id.seekBar3).progress] = floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
+       showVal()
+        return
     }
 
+    for (i in catB .. catE) {
+        soundData[i] = floorV(met(soundData[i]))
+    }
+    showVal()
+}
 
+fun showVal()
+{
+  var progress=  findViewById<SeekBar>(R.id.seekBar3).progress
+    progress = progress - (progress%6)
+    var st = "${progress}<br/>"
+    for (i in 0 until 6*12) {
+        var ss = soundData[progress + i].toString()
+        if( soundData[progress + i]>0)
+        {
+            st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+        }
+        else
+        {
+            st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
+        }
+        if((i+1)%6==0 && i!=6*12-1)
+            st+="<br/>"
+    }
+
+    findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
+}
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
@@ -496,37 +535,13 @@ class MainActivity : AppCompatActivity() {
                 findViewById<Button>(R.id.catbtn).setText("cat")
                 catE = findViewById<SeekBar>(R.id.seekBar3).progress
             }
+            findViewById<TextView>(R.id.textViewcha).setText( "${catB},${catE}")
         }
         findViewById<Button>(R.id.btnc2).setOnClickListener {
-            if (cat) {
-                soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
-                    (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] * 2).toShort()
-                showCha()
-                return@setOnClickListener
-            }
-
-            for (i in catB until catE) {
-                if (soundData[i] * 2 > Short.MAX_VALUE)
-                    soundData[i] = Short.MAX_VALUE
-                else if (soundData[i] * 2 < Short.MIN_VALUE)
-                    soundData[i] = Short.MIN_VALUE
-                else
-                    soundData[i] = (soundData[i] * 2).toShort()
-            }
-            showCha()
+            dealCha { it*2 }
         }
         findViewById<Button>(R.id.btnchu2).setOnClickListener {
-            if (cat) {
-                soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
-                    (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] / 2).toShort()
-                showCha()
-                return@setOnClickListener
-            }
-
-            for (i in catB until catE) {
-                soundData[i] = (soundData[i] / 2).toShort()
-            }
-            showCha()
+dealCha { it/2 }
         }
 
         findViewById<Button>(R.id.button).setOnClickListener { q() }
@@ -535,20 +550,7 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 30,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        if (cat) {
-                            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
-                                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] - 1).toShort()
-                            showCha()
-                            return
-                        }
-                        for (i in catB until catE) {
-
-                            if (soundData[i] - 1 < Short.MIN_VALUE)
-                                soundData[i] = Short.MIN_VALUE
-                            else
-                                soundData[i] = (soundData[i] - 1).toShort()
-                        }
-                        showCha()
+                      dealCha { it-1 }
                     }
                 })
         )
@@ -557,19 +559,24 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 30,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        if (cat) {
-                            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
-                                (soundData[findViewById<SeekBar>(R.id.seekBar3).progress] + 1).toShort()
-                            showCha()
-                            return
-                        }
-                        for (i in catB until catE) {
-                            if (soundData[i] + 1 > Short.MAX_VALUE)
-                                soundData[i] = Short.MAX_VALUE
-                            else
-                                soundData[i] = (soundData[i] + 1).toShort()
-                        }
-                        showCha()
+                        dealCha { it+1 }
+                    }
+                })
+        )
+
+        findViewById<Button>(R.id.jiaershi).setOnTouchListener(
+            RepeatListener(400, 10,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it+100 }
+                    }
+                })
+        )
+        findViewById<Button>(R.id.jianershi).setOnTouchListener(
+            RepeatListener(400, 10,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it-100 }
                     }
                 })
         )
@@ -639,21 +646,7 @@ class MainActivity : AppCompatActivity() {
                     findViewById<Button>(R.id.fixbtn).setText("n")
                 }
                 findViewById<TextView>(R.id.seekBarText3).setText(progress.toString())
-                var st = ""
-
-                for (i in 0..80) {
-
-                    var ss = soundData[progress + i].toString()
-                    if( soundData[progress + i]>0)
-                    {
-                        st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
-                    }
-                    else
-                    {
-                        st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
-                    }
-                }
-                findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
+            showVal()
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
