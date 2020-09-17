@@ -25,8 +25,8 @@ var xlen = 100
 var xCapLen = 2244
 var yCapLen = 2244
 var g_reso = 0
-var maxX = 700
-var maxY = 700
+var maxX = 1000
+var maxY = 1000
 var pause = false
 
 class pointItem(var x: Int, var y: Int) {
@@ -328,6 +328,7 @@ class thrC : Thread() {
 
 class MainActivity : AppCompatActivity() {
     var hasStart = false
+    var stepMode = false
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
@@ -379,6 +380,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         var inte = 30
 
+
         try {
             iniText()
         } catch (e: Exception) {
@@ -387,7 +389,22 @@ class MainActivity : AppCompatActivity() {
         tt.ip = findViewById<EditText>(R.id.ip).text.toString()
         tt.path = baseContext.filesDir
         tt.start()
+        findViewById<Button>(R.id.pauseBtn).setOnLongClickListener{
+            pause = true
+            stepMode = !stepMode
+            if(stepMode)
+                findViewById<Button>(R.id.pauseBtn).setText("N")
+            else
+                findViewById<Button>(R.id.pauseBtn).setText("->")
+            true
+        }
+
         findViewById<Button>(R.id.pauseBtn).setOnClickListener {
+            if(stepMode)
+            {
+                pause = false
+                return@setOnClickListener
+            }
             pause = !pause
             if (pause) {
                 findViewById<Button>(R.id.pauseBtn).setText("->")
@@ -551,6 +568,8 @@ class MainActivity : AppCompatActivity() {
     fun show(bitmap: Bitmap) {
         if (pause)
             return
+        if(stepMode)
+            pause = true
         findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
     }
 }
