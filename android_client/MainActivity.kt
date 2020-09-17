@@ -23,8 +23,11 @@ import java.nio.channels.SocketChannel
 //biggest size of picture shown
 //samsung c5 1000
 //redmi 3s 700
-var maxX = 1000
-var maxY = 1000
+var maxX = 700
+var maxY = 700
+
+//picture maxSize got from server
+var showLen = 700
 //end of config
 
 var xs = 0
@@ -141,7 +144,7 @@ class thrC : Thread() {
     lateinit var upper: MainActivity
     lateinit var ip: String
     lateinit var path: File
-
+    var lastCallTime = System.currentTimeMillis()
     var reso = 0;
     var drawInfo = HashMap<Int, ArrayList<pointItem>>()
     var maxWaitTime = 5 * 1000.toLong()
@@ -239,6 +242,9 @@ class thrC : Thread() {
     }
 
     override fun run() {
+        if(System.currentTimeMillis()-lastCallTime<10)
+            Thread.sleep(10+lastCallTime-System.currentTimeMillis())
+        lastCallTime = System.currentTimeMillis()
         while (true) {
             if (pause) {
                 Thread.sleep(10)
@@ -566,7 +572,7 @@ class MainActivity : AppCompatActivity() {
             t.start()
             findViewById<SeekBar>(R.id.seekBar1).max = xCapLen
             findViewById<SeekBar>(R.id.seekBar2).max = yCapLen
-            findViewById<SeekBar>(R.id.seekBar3).max = 200
+            findViewById<SeekBar>(R.id.seekBar3).max = showLen
             findViewById<SeekBar>(R.id.seekBar4).max = 20
         }
 
