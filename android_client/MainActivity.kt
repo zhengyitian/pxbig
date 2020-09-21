@@ -23,11 +23,11 @@ import java.nio.channels.SocketChannel
 //biggest size of picture shown
 //samsung c5 1000
 //redmi 3s 700
-var maxX = 700
-var maxY = 700
+var maxX = 1000
+var maxY = 1000
 
 //picture maxSize got from server
-var showLen = 700
+var showLen = 1000
 //end of config
 
 var xs = 0
@@ -104,7 +104,15 @@ class recvThr : Thread() {
     fun w() {
         var add = InetSocketAddress(ipR, 8898)
         var so = SocketChannel.open()
-        so.connect(add)
+        try {
+            so.socket().connect(add,2000)
+        }
+        catch (e:Exception)
+        {
+            so.close()
+            throw e
+        }
+
         var b = ByteBuffer.allocate(4)
         so.read(b)
         b.flip()
@@ -118,6 +126,7 @@ class recvThr : Thread() {
                 break
             to += re
         }
+        so.close()
         var file: File = File(path, i.toString())
         var f = FileOutputStream(file)
         f.write(b.array(), 0, to)
