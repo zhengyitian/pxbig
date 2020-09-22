@@ -139,9 +139,9 @@ class thr4 : Thread() {
             so.close()
         }
 
-         so = SocketChannel.open()
+        so = SocketChannel.open()
         so.connect(add)
-var co=0
+        var co=0
         var b = ByteBuffer.allocate(6*1024*1024*2)
         var xx = ByteBuffer.wrap(ByteArray(2))
         so.write(xx)
@@ -172,7 +172,7 @@ var co=0
         upper.runOnUiThread{
             upper.findViewById<Button>(R.id.in2btn).isEnabled = true
             upper.findViewById<Button>(R.id.out2btn).isEnabled = true
-           upper.findViewById<Button>(R.id.stop2btn).isEnabled = true
+            upper.findViewById<Button>(R.id.stop2btn).isEnabled = true
             upper.findViewById<Button>(R.id.stop2btn).setText("stop")
             upper.recordOver(ss,to/2)
         }
@@ -184,7 +184,7 @@ class thr3 : Thread() {
         var ser = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 18899)
         ser.bind(add)
-        var maxWaitTime = 5000
+        var maxWaitTime = 18000
         while (true) {
             try {
                 var cli = ser.accept()
@@ -202,7 +202,7 @@ class thr3 : Thread() {
                 var jj = ByteBuffer.allocate(16)
                 var rr = cli.read(jj)
 
-               if(rr==2)
+                if(rr==2)
                 {
                     var ww = 0
                     while (ww<50&& isRecording)
@@ -368,7 +368,7 @@ class thr : Thread() {
         var ser = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 8899)
         ser.bind(add)
-        var maxWaitTime = 5000
+        var maxWaitTime = 15000
         while (true) {
             try {
                 var cli = ser.accept()
