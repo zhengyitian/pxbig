@@ -101,6 +101,8 @@ class RepeatListener(
 
 
 lateinit var g_med: MediaProjection
+var soundData_b = ShortArray(1024*1024*6)
+var dataLen_b = 0
 
 class thr : Thread() {
     lateinit var upper: MainActivity
@@ -217,7 +219,6 @@ class thr : Thread() {
         createImageReader()
         Thread.sleep(1000)
         startVirtual()
-//iniAudio()
         var ser = ServerSocketChannel.open()
         var add = InetSocketAddress("0.0.0.0", 8899)
         ser.bind(add)
@@ -238,55 +239,81 @@ class thr : Thread() {
                 }
                 var jj = ByteBuffer.allocate(16)
                 var rr = cli.read(jj)
-                if (rr != 16) {
+
+                if(rr==16)
+                {
+                    jj.flip()
+                    jj.order(ByteOrder.nativeOrder())
+                    var xbegin = jj.getInt()
+                    var ybegin = jj.getInt()
+                    var xlen = jj.getInt()
+                    var ylen = jj.getInt()
+                    var bitmap = startCapture()
+                    val imageSize = bitmap.rowBytes * bitmap.height
+                    val uncompressedBuffer =
+                        ByteBuffer.allocateDirect(imageSize)
+                    bitmap.copyPixelsToBuffer(uncompressedBuffer)
+                    uncompressedBuffer.position(0)
+                    var bb = ByteBuffer.allocate(xlen * ylen * 4)
+                    for (j in ybegin until ybegin + ylen) {
+                        var startPos = xbegin + j * 2244
+                        var endPos = xbegin + j * 2244 + xlen
+                        bb.put(
+                            uncompressedBuffer.array().slice(startPos * 4 until endPos * 4)
+                                .toByteArray()
+                        )
+                    }
+                    bb.flip()
+                    var si = bb.array().size
+                    var co = 0
+                    cli.configureBlocking(false)
+                    selector = Selector.open()
+                    while (co != si && System.currentTimeMillis() - beginTime < maxWaitTime) {
+                        cli.register(selector, SelectionKey.OP_WRITE)
+                        selector.select(maxWaitTime + 1000.toLong())
+                        co += cli.write(bb)
+                    }
+                    selector.close()
+                    cli.close()
+                }
+                else if(rr==2)
+                {
+                    var b = soundData_b.sliceArray(0 until dataLen_b)
+                    var bb = ByteBuffer.wrap(  util.short2byte(b))
+                    var si = bb.array().size
+                    var co = 0
+                    cli.configureBlocking(false)
+                    selector = Selector.open()
+                    while (co != si && System.currentTimeMillis() - beginTime < maxWaitTime) {
+                        cli.register(selector, SelectionKey.OP_WRITE)
+                        selector.select(maxWaitTime + 1000.toLong())
+                        co += cli.write(bb)
+                    }
+                    selector.close()
+                    cli.close()
+                }
+                else if(rr==1)
+                {
+                    jj.flip()
+                    var a = jj.get()
+                    cli.close()
+                    if(a==0.toByte())
+                        upper.runOnUiThread({ upper.doStartIn() })
+                    if(a==1.toByte())
+                        upper.runOnUiThread({ upper.doStartOut() })
+                    if(a==2.toByte())
+                        upper.runOnUiThread({ upper.doStop() })
+                }
+                else {
                     cli.close()
                     continue
                 }
-                jj.flip()
-                jj.order(ByteOrder.nativeOrder())
-                var xbegin = jj.getInt()
-                var ybegin = jj.getInt()
-                var xlen = jj.getInt()
-                var ylen = jj.getInt()
 
-
-                var bitmap = startCapture()
-                upper.runOnUiThread({ upper.showImg(bitmap) })
-                val imageSize = bitmap.rowBytes * bitmap.height
-                val uncompressedBuffer =
-                    ByteBuffer.allocateDirect(imageSize)
-                bitmap.copyPixelsToBuffer(uncompressedBuffer)
-                uncompressedBuffer.position(0)
-                var bb = ByteBuffer.allocate(xlen * ylen * 4)
-                for (j in ybegin until ybegin + ylen) {
-                    var startPos = xbegin + j * 2244
-                    var endPos = xbegin + j * 2244 + xlen
-                    bb.put(
-                        uncompressedBuffer.array().slice(startPos * 4 until endPos * 4)
-                            .toByteArray()
-                    )
-                }
-                bb.flip()
-
-                //      var bb=ByteBuffer.wrap(ByteArray(xlen*ylen*4))
-                var si = bb.array().size
-                var co = 0
-                cli.configureBlocking(false)
-                selector = Selector.open()
-                while (co != si && System.currentTimeMillis() - beginTime < maxWaitTime) {
-                    cli.register(selector, SelectionKey.OP_WRITE)
-                    selector.select(maxWaitTime + 1000.toLong())
-                    co += cli.write(bb)
-                }
-                selector.close()
-                cli.close()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
-
-
 }
 
 class MainActivity : AppCompatActivity() {
@@ -301,8 +328,6 @@ class MainActivity : AppCompatActivity() {
 
     var soundData = ShortArray(1024 * 1024 * 6)
     var dataLen = 0
-    var soundData_b = ShortArray(1024 * 1024 * 6)
-    var dataLen_b = 0
     lateinit var audio: AudioTrack
     var hasStop = false
     var fixed = false
@@ -311,6 +336,27 @@ class MainActivity : AppCompatActivity() {
     var firstCat = true
     var catB = 0
     var catE = 0
+
+
+    fun doStartIn(){
+        if( !findViewById<Button>(R.id.startBtn).isEnabled)
+            return
+        findViewById<Button>(R.id.startBtn).isEnabled = false
+        findViewById<Button>(R.id.startoutBtn).isEnabled = false
+        iniAudio(1)
+    }
+
+    fun doStartOut(){
+        if( !findViewById<Button>(R.id.startoutBtn).isEnabled)
+            return
+        findViewById<Button>(R.id.startoutBtn).isEnabled = false
+        findViewById<Button>(R.id.startBtn).isEnabled = false
+        iniAudio(2)
+    }
+
+    fun doStop(){
+        hasStop = true
+    }
 
     fun writeAudioDataToFile() {
         dataLen = 0
@@ -515,11 +561,6 @@ class MainActivity : AppCompatActivity() {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        if(!full_version)
-        {
-            var params =LinearLayout.LayoutParams(1, 1);
-            findViewById<ImageView>(R.id.imageView).layoutParams = params
-        }
         findViewById<Button>(R.id.fixbtn).setOnClickListener {
             fixed = !fixed
             if (fixed) {
@@ -592,22 +633,22 @@ class MainActivity : AppCompatActivity() {
             soundData = soundData_b.copyOf()
             dataLen = dataLen_b
         }
-        findViewById<Button>(R.id.stopBtn).setOnClickListener { hasStop = true }
+        findViewById<Button>(R.id.stopBtn).setOnClickListener {
+            doStop()
+           }
 
         findViewById<Button>(R.id.playBtn).setOnClickListener {
             findViewById<Button>(R.id.playBtn).isEnabled = false
             play()
         }
         findViewById<Button>(R.id.startBtn).setOnClickListener {
-            findViewById<Button>(R.id.startBtn).isEnabled = false
-            findViewById<Button>(R.id.startoutBtn).isEnabled = false
-            iniAudio(1)
+            doStartIn()
+
         }
 
         findViewById<Button>(R.id.startoutBtn).setOnClickListener {
-            findViewById<Button>(R.id.startoutBtn).isEnabled = false
-            findViewById<Button>(R.id.startBtn).isEnabled = false
-            iniAudio(2)
+            doStartOut()
+
         }
         findViewById<Button>(R.id.jianBtn).setOnClickListener {
             findViewById<SeekBar>(R.id.seekBar).progress -= 1
@@ -714,7 +755,4 @@ class MainActivity : AppCompatActivity() {
         findViewById<SeekBar>(R.id.seekBar3).max = dataLen
     }
 
-    fun showImg(b: Bitmap) {
-        findViewById<ImageView>(R.id.imageView).setImageBitmap(b)
-    }
 }
