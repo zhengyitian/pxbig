@@ -95,7 +95,7 @@
 
             <SeekBar
                 android:id="@+id/seekBar2"
-                android:layout_width="300dp"
+                android:layout_width="235dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:visibility="visible" />
@@ -110,14 +110,14 @@
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="horizontal">
 
             <SeekBar
                 android:id="@+id/seekBar3"
-                android:layout_width="250dp"
+                android:layout_width="235dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:visibility="visible" />
@@ -131,7 +131,7 @@
 
             <Button
                 android:id="@+id/fixbtn"
-                android:layout_width="55dp"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="n" />
