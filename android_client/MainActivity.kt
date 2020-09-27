@@ -156,7 +156,7 @@ class thrC : Thread() {
     var lastCallTime = System.currentTimeMillis()
     var reso = 0;
     var drawInfo = HashMap<Int, ArrayList<pointItem>>()
-    var maxWaitTime = 5 * 1000.toLong()
+    var maxWaitTime = 15 * 1000.toLong()
 
     fun iniOne(i: Int) {
         var l = ArrayList<pointItem>()
@@ -183,6 +183,8 @@ class thrC : Thread() {
 
     fun drawOne(ty: Int, v: Int, i: Int, j: Int,br:ByteArray,xll:Int) {
         var redCount = v * reso * reso / 3 / 255;
+        if (reso==30)
+            redCount = v
         var gap = reso / 3 * ty;
 
         if (reso == 30 && drawInfo.contains(redCount)) {
@@ -278,10 +280,19 @@ class thrC : Thread() {
             var ss = w(xs2, ys2, xl, yl)
             if (ss.array().size == 0)
                 continue
+            var r = ss.array()[0].toInt()
+            var g = ss.array()[1].toInt()
+            var bl = ss.array()[2].toInt()
+            if (r < 0)
+                r += 256
+            if (g < 0)
+                g += 256
+            if (bl < 0)
+                bl += 256
 
             if (reso != 0) {
                 var bb = draw(ss, xl, yl)
-                upper.runOnUiThread({ upper.show(bb) })
+                upper.runOnUiThread({ upper.show(bb,r,g,bl) })
                 continue
             }
             var bb = Bitmap.createBitmap(xl, yl, Bitmap.Config.ARGB_8888)
@@ -298,7 +309,7 @@ class thrC : Thread() {
             }
             var b = ByteBuffer.wrap(br)
             bb.copyPixelsFromBuffer(b)
-            upper.runOnUiThread({ upper.show(bb) })
+            upper.runOnUiThread({ upper.show(bb,r,g,bl) })
         }
     }
 
@@ -587,11 +598,12 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun show(bitmap: Bitmap) {
+    fun show(bitmap: Bitmap,r:Int,g:Int,b:Int) {
         if (pause)
             return
         if(stepMode)
             pause = true
         findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
+        findViewById<EditText>(R.id.ip).setText("${r},${g},${b}")
     }
 }
