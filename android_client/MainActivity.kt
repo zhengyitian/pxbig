@@ -1,7 +1,8 @@
 package com.example.server
 
 import android.graphics.Bitmap
-import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Handler
 import android.view.MotionEvent
@@ -22,7 +23,10 @@ import java.nio.channels.SocketChannel
 //config before compile
 //biggest size of picture shown
 //samsung c5 1000
+//huaweip20 1000
 //redmi 3s 700
+
+
 var maxX = 1000
 var maxY = 1000
 
@@ -38,6 +42,16 @@ var yCapLen = 2244
 var g_reso = 0
 
 var pause = false
+
+data class imageInfo(
+    var reso: Int = 0,
+    var x: Int = 0,
+    var y: Int = 0,
+    var xlen: Int = 0,
+    var ylen: Int = 0,
+    var img: Bitmap? = null,
+    var b: IntArray = IntArray(0)
+)
 
 class pointItem(var x: Int, var y: Int) {
 }
@@ -105,10 +119,8 @@ class recvThr : Thread() {
         var add = InetSocketAddress(ipR, 8898)
         var so = SocketChannel.open()
         try {
-            so.socket().connect(add,2000)
-        }
-        catch (e:Exception)
-        {
+            so.socket().connect(add, 2000)
+        } catch (e: Exception) {
             so.close()
             throw e
         }
@@ -181,9 +193,9 @@ class thrC : Thread() {
         }
     }
 
-    fun drawOne(ty: Int, v: Int, i: Int, j: Int,br:ByteArray,xll:Int) {
+    fun drawOne(ty: Int, v: Int, i: Int, j: Int, br: ByteArray, xll: Int) {
         var redCount = v * reso * reso / 3 / 255;
-        if (reso==30)
+        if (reso == 30)
             redCount = v
         var gap = reso / 3 * ty;
 
@@ -192,14 +204,14 @@ class thrC : Thread() {
             var dy = j * reso;
             for (ii in i * reso + gap until gap + i * reso + reso / 3) {
                 for (jj in j * reso until (j + 1) * reso) {
-                    var va = (ii+jj*xll)*4
-                    br[va+3]=-1
+                    var va = (ii + jj * xll) * 4
+                    br[va + 3] = -1
                 }
             }
             for (p in drawInfo[redCount]!!) {
-                var va = ((di + p.x)+( dy + p.y)*xll)*4
-                br[va+3]=-1
-                br[va+ty]=-1
+                var va = ((di + p.x) + (dy + p.y) * xll) * 4
+                br[va + 3] = -1
+                br[va + ty] = -1
             }
             return;
         }
@@ -207,29 +219,40 @@ class thrC : Thread() {
         var redCo = 0;
         for (ii in i * reso + gap until gap + i * reso + reso / 3) {
             for (jj in j * reso until (j + 1) * reso) {
-                var va = (ii+jj*xll)*4
-                br[va+3]=-1
+                var va = (ii + jj * xll) * 4
+                br[va + 3] = -1
                 if (redCo >= redCount) {
                     continue
                 }
-                br[va+ty]=-1
+                br[va + ty] = -1
                 redCo += 1;
             }
         }
     }
 
-    fun draw(ss: ByteBuffer, xl: Int, yl: Int): Bitmap {
-        var pa = maxX;
-        if (xl * reso < maxX)
+    fun draw(ss: ByteBuffer, xl: Int, yl: Int, ret: imageInfo) {
+        var xx = maxX / reso
+        var yy = maxY / reso
+
+        var pa = xx * reso;
+        if (xl * reso < pa) {
             pa = xl * reso;
-        var pb = maxY;
-        if (yl * reso < maxY)
+            xx = xl
+        }
+
+        var pb = yy * reso;
+        if (yl * reso < pb) {
             pb = yl * reso;
+            yy = yl
+        }
+        ret.xlen = xx
+        ret.ylen = yy
+        ret.b = IntArray(xx * yy * 3)
         var bb = Bitmap.createBitmap(pa, pb, Bitmap.Config.ARGB_8888)
         var br = ByteArray(pa * pb * 4)
         for (j in 0 until yl) {
             for (i in 0 until xl) {
-                if ((i + 1) * reso > maxX || (j + 1) * reso > maxY) {
+                if ((i + 1) >= xx || (j + 1) >= yy) {
                     ss.getInt()
                 } else {
                     var r = ss.get().toInt()
@@ -242,19 +265,22 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
-                    drawOne(0, r, i, j, br,pa);
-                    drawOne(1, g, i, j, br,pa);
-                    drawOne(2, b, i, j, br,pa);
+                    ret.b[(i + j * xx) * 3] = r
+                    ret.b[(i + j * xx) * 3 + 1] = g
+                    ret.b[(i + j * xx) * 3 + 2] = b
+                    drawOne(0, r, i, j, br, pa);
+                    drawOne(1, g, i, j, br, pa);
+                    drawOne(2, b, i, j, br, pa);
                 }
             }
         }
         bb.copyPixelsFromBuffer(ByteBuffer.wrap(br))
-        return bb
+        ret.img = bb
     }
 
     override fun run() {
-        if(System.currentTimeMillis()-lastCallTime<10)
-            Thread.sleep(10+lastCallTime-System.currentTimeMillis())
+        if (System.currentTimeMillis() - lastCallTime < 10)
+            Thread.sleep(10 + lastCallTime - System.currentTimeMillis())
         lastCallTime = System.currentTimeMillis()
         while (true) {
             if (pause) {
@@ -277,39 +303,56 @@ class thrC : Thread() {
                 Thread.sleep(10)
                 continue
             }
+
             var ss = w(xs2, ys2, xl, yl)
             if (ss.array().size == 0)
                 continue
-            var r = ss.array()[0].toInt()
-            var g = ss.array()[1].toInt()
-            var bl = ss.array()[2].toInt()
-            if (r < 0)
-                r += 256
-            if (g < 0)
-                g += 256
-            if (bl < 0)
-                bl += 256
+            var ret = imageInfo()
+            ret.reso = reso
+            ret.x = xs2
+            ret.y = ys2
+
 
             if (reso != 0) {
-                var bb = draw(ss, xl, yl)
-                upper.runOnUiThread({ upper.show(bb,r,g,bl) })
+                var bb = draw(ss, xl, yl, ret)
+                upper.runOnUiThread({ upper.show(ret) })
                 continue
             }
+
+            ret.xlen = xl
+            ret.ylen = yl
+            ret.b = IntArray(xl * yl * 3)
             var bb = Bitmap.createBitmap(xl, yl, Bitmap.Config.ARGB_8888)
             var br = ByteArray(xl * yl * 4)
             for (j in 0 until yl) {
                 for (i in 0 until xl) {
                     var va = (i + xl * j) * 4
-                    br[va] = ss.get()
-                    br[va + 1] = ss.get()
-                    br[va + 2] = ss.get()
+                    var rc = ss.get()
+                    var gc = ss.get()
+                    var bc = ss.get()
                     ss.get()
+                    br[va] = rc
+                    br[va + 1] = gc
+                    br[va + 2] = bc
                     br[va + 3] = -1
+                    var r = rc.toInt()
+                    var g = gc.toInt()
+                    var b = bc.toInt()
+                    if (r < 0)
+                        r += 256
+                    if (g < 0)
+                        g += 256
+                    if (b < 0)
+                        b += 256
+                    ret.b[(i + xl * j) * 3] = r
+                    ret.b[(i + xl * j) * 3 + 1] = g
+                    ret.b[(i + xl * j) * 3 + 2] = b
                 }
             }
             var b = ByteBuffer.wrap(br)
             bb.copyPixelsFromBuffer(b)
-            upper.runOnUiThread({ upper.show(bb,r,g,bl) })
+            ret.img = bb
+            upper.runOnUiThread({ upper.show(ret) })
         }
     }
 
@@ -362,6 +405,7 @@ class thrC : Thread() {
 class MainActivity : AppCompatActivity() {
     var hasStart = false
     var stepMode = false
+    var im = imageInfo()
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
@@ -422,10 +466,10 @@ class MainActivity : AppCompatActivity() {
         tt.ip = findViewById<EditText>(R.id.ip).text.toString()
         tt.path = baseContext.filesDir
         tt.start()
-        findViewById<Button>(R.id.pauseBtn).setOnLongClickListener{
+        findViewById<Button>(R.id.pauseBtn).setOnLongClickListener {
             pause = true
             stepMode = !stepMode
-            if(stepMode)
+            if (stepMode)
                 findViewById<Button>(R.id.pauseBtn).setText("N")
             else
                 findViewById<Button>(R.id.pauseBtn).setText("->")
@@ -433,8 +477,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.pauseBtn).setOnClickListener {
-            if(stepMode)
-            {
+            if (stepMode) {
                 pause = false
                 return@setOnClickListener
             }
@@ -525,6 +568,8 @@ class MainActivity : AppCompatActivity() {
             ) {
                 findViewById<TextView>(R.id.seekBar1t).setText(progress.toString())
                 xs = progress
+                if (pause)
+                    ss()
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -539,6 +584,8 @@ class MainActivity : AppCompatActivity() {
             ) {
                 ys = progress
                 findViewById<TextView>(R.id.seekBar2t).setText(progress.toString())
+                if (pause)
+                    ss()
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -598,12 +645,37 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun show(bitmap: Bitmap,r:Int,g:Int,b:Int) {
+    fun ss() {
+        var x = findViewById<SeekBar>(R.id.seekBar1).progress - im.x
+        var y = findViewById<SeekBar>(R.id.seekBar2).progress - im.y
+        if (x < 0 || x >= im.xlen || y < 0 || y >= im.ylen)
+            return
+        var p = (y) * im.xlen + (x) * 3
+        var vv = im.reso
+        if (vv < 3)
+            vv = 1
+        var copyRect = Rect(x * vv, y * vv, im.xlen * vv, im.ylen * vv)
+        val subImage = Bitmap.createBitmap(
+            copyRect.width(),
+            copyRect.height(), Bitmap.Config.ARGB_8888
+        )
+        val c = Canvas(subImage)
+        c.drawBitmap(
+            im.img!!, copyRect,  //from   w w w . j a va  2  s. c o m
+            Rect(0, 0, copyRect.width(), copyRect.height()), null
+        )
+        findViewById<ImageView>(R.id.imageView).setImageBitmap(subImage)
+        findViewById<EditText>(R.id.ip).setText("${im.b[p]},${im.b[p + 1]},${im.b[p + 2]}")
+    }
+
+    fun show(ret: imageInfo) {
         if (pause)
             return
-        if(stepMode)
+        if (stepMode)
             pause = true
-        findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
-        findViewById<EditText>(R.id.ip).setText("${r},${g},${b}")
+        im = ret
+        var p = 0
+        findViewById<ImageView>(R.id.imageView).setImageBitmap(ret.img)
+        findViewById<EditText>(R.id.ip).setText("${im.b[p]},${im.b[p + 1]},${im.b[p + 2]}")
     }
 }
