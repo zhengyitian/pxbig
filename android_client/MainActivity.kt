@@ -42,8 +42,7 @@ var yCapLen = 2244
 var g_reso = 0
 
 var pause = false
-
-data class imageInfo(
+class imageInfo(
     var reso: Int = 0,
     var x: Int = 0,
     var y: Int = 0,
@@ -646,11 +645,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun ss() {
+        if(im.img==null)
+            return
         var x = findViewById<SeekBar>(R.id.seekBar1).progress - im.x
         var y = findViewById<SeekBar>(R.id.seekBar2).progress - im.y
         if (x < 0 || x >= im.xlen || y < 0 || y >= im.ylen)
             return
-        var p = (y) * im.xlen + (x) * 3
+        var p = (y * im.xlen + x) * 3
         var vv = im.reso
         if (vv < 3)
             vv = 1
