@@ -251,7 +251,7 @@ class thrC : Thread() {
         var br = ByteArray(pa * pb * 4)
         for (j in 0 until yl) {
             for (i in 0 until xl) {
-                if ((i + 1) >= xx || (j + 1) >= yy) {
+                if ((i + 1) > xx || (j + 1) > yy) {
                     ss.getInt()
                 } else {
                     var r = ss.get().toInt()
