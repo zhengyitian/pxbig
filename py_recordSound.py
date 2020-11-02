@@ -1,4 +1,11 @@
 #windows open steroio mix
+#linux:
+#Install sudo apt-get install pulseaudio-utils lame mpg123
+#pacmd list-sinks | grep -e 'name:' -e 'index' -e 'Speakers'
+#parec -d alsa_output.pci-0000_00_1f.3.analog-stereo.monitor | lame -r -V0 - out.mp3
+#or 
+#sudo add-apt-repository ppa:audio-recorder/ppa
+#sudo apt-get update && sudo apt-get install audio-recorder
 
 import pyaudio
 import wave
