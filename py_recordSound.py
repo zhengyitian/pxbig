@@ -1,3 +1,5 @@
+#windows open steroio mix
+
 import pyaudio
 import wave
 
