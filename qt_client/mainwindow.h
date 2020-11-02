@@ -35,6 +35,7 @@ public:
     lastDrawInfoC lastDrawInfo;
     bool hasRepaint = false;
     QLabel* la;
+       QLabel* rgbla;
     QMap<int,QVector< pointItem>> drawInfo;
 
     explicit MainWindow(QWidget *parent = nullptr)
@@ -127,7 +128,7 @@ public:
         lastDrawIm = QPixmap(QSize(pa,pb)).toImage();
         char* temp = data.data();
         int argb ;
-
+        bool hasCal = false;
         for (int i=0;i<xl;i++)
         {
             for (int j=0;j<yl;j++)
@@ -136,6 +137,13 @@ public:
                     continue;
                 int val =  i+xGap+(j+yGap)*(xl+xGap);
                 memcpy((char*)&argb,temp+val*4,4);
+                if(!hasCal)
+                {
+                    hasCal = true;
+                    QString ss = QString::number((argb>>0)&0xFF)+","+QString::number((argb>>8)&0xFF)+","+QString::number((argb>>16)&0xFF);
+                    rgbla->setText(ss);
+              //      qDebug()<<"r,g,b"<<((argb>>0)&0xFF)<<((argb>>8)&0xFF)<<((argb>>16)&0xFF);
+                }
                 drawOne(0,(argb>>0)&0xFF,i,j,lastDrawIm,Qt::red);
                 drawOne(1,(argb>>8)&0xFF,i,j,lastDrawIm,Qt::green);
                 drawOne(2,(argb>>16)&0xFF,i,j,lastDrawIm,Qt::blue);
@@ -149,12 +157,20 @@ public:
         lastDrawIm = QPixmap(QSize(lastDrawInfo.oriXl,lastDrawInfo.oriYl)).toImage();
         char* temp = lastDrawInfo.data.data();
         int argb ;
+          bool hasCal = false;
         for(int j=0;j<lastDrawInfo.oriYl;j++)
         {
             for(int i=0;i<lastDrawInfo.oriXl;i++)
             {
                 int val =  i+j*lastDrawInfo.oriXl;
                 memcpy((char*)&argb,temp+val*4,4);
+                if(!hasCal)
+                {
+                    hasCal = true;
+                  QString ss = QString::number((argb>>0)&0xFF)+","+QString::number((argb>>8)&0xFF)+","+QString::number((argb>>16)&0xFF);
+                    rgbla->setText(ss);
+             //       qDebug()<<"r,g,b"<<((argb>>0)&0xFF)<<((argb>>8)&0xFF)<<((argb>>16)&0xFF);
+                }
                 lastDrawIm.setPixelColor(i,j,QColor( (argb>>0)&0xFF, (argb>>8)&0xFF, (argb>>16)&0xFF));
             }
         }

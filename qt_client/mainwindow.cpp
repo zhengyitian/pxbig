@@ -30,6 +30,8 @@ void MainWindow::iniUI()
     h->addWidget(pauseBtn);
     la = new QLabel();
               h->addWidget(la);
+              rgbla = new QLabel();
+                        h->addWidget(rgbla);
     v->addLayout(h);
     v->addStretch();
     this->setLayout(v);
