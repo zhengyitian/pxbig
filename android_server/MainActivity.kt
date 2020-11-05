@@ -32,6 +32,7 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import kotlin.experimental.and
+
 //config before compile
 //full_version with screen captrued and internal sound record(needs android 10),otherwise only external sound record.
 var full_version = true
@@ -97,9 +98,8 @@ class RepeatListener(
 }
 
 
-
 lateinit var g_med: MediaProjection
-var soundData_b = ShortArray(1024*1024*6)
+var soundData_b = ShortArray(1024 * 1024 * 6)
 var dataLen_b = 0
 var isRecording = false
 
@@ -112,16 +112,14 @@ class thr4 : Thread() {
         var so = SocketChannel.open()
         var add = InetSocketAddress(ip, 18899)
         so.connect(add)
-        if(ty==0)
-        {
+        if (ty == 0) {
             var b = ByteArray(1)
             var xx = ByteBuffer.wrap(b)
             so.write(xx)
             so.close()
             return
         }
-        if(ty==1)
-        {
+        if (ty == 1) {
             var b = ByteArray(1)
             b[0] = 1
             var xx = ByteBuffer.wrap(b)
@@ -130,8 +128,7 @@ class thr4 : Thread() {
             return
         }
 
-        if(ty==2)
-        {
+        if (ty == 2) {
             var b = ByteArray(1)
             b[0] = 2
             var xx = ByteBuffer.wrap(b)
@@ -141,8 +138,8 @@ class thr4 : Thread() {
 
         so = SocketChannel.open()
         so.connect(add)
-        var co=0
-        var b = ByteBuffer.allocate(6*1024*1024*2)
+        var co = 0
+        var b = ByteBuffer.allocate(6 * 1024 * 1024 * 2)
         var xx = ByteBuffer.wrap(ByteArray(2))
         so.write(xx)
         var to = 0
@@ -152,32 +149,94 @@ class thr4 : Thread() {
                 break
             to += re
             co += re
-            if(co>100*1024)
-            {
-                co=0
-                upper.runOnUiThread{
-                    upper.findViewById<Button>(R.id.stop2btn).setText((to/1204/100).toString())
+            if (co > 100 * 1024) {
+                co = 0
+                upper.runOnUiThread {
+                    upper.findViewById<Button>(R.id.stop2btn).setText((to / 1204 / 100).toString())
                 }
             }
         }
         so.close()
         b.order(ByteOrder.LITTLE_ENDIAN)
         b.flip()
-        var ss = ShortArray(6*1024*1024)
-        for (i in 0 until to/2)
-        {
-            ss[i]=b.getShort()
+        var ss = ShortArray(6 * 1024 * 1024)
+        for (i in 0 until to / 2) {
+            ss[i] = b.getShort()
         }
 
-        upper.runOnUiThread{
+        upper.runOnUiThread {
             upper.findViewById<Button>(R.id.in2btn).isEnabled = true
             upper.findViewById<Button>(R.id.out2btn).isEnabled = true
             upper.findViewById<Button>(R.id.stop2btn).isEnabled = true
             upper.findViewById<Button>(R.id.stop2btn).setText("stop")
-            upper.recordOver(ss,to/2)
+            upper.recordOver(ss, to / 2)
         }
     }
 }
+
+class thrSoundStream : Thread() {
+    lateinit var recorder: AudioRecord
+    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
+    var BytesPerElement = 2; // 2 bytes in 16bit format
+    var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
+    var RECORDER_SAMPLERATE = 44100
+    lateinit var cli: SocketChannel
+    override fun run() {
+        var ser = ServerSocketChannel.open()
+        var add = InetSocketAddress("0.0.0.0", 18799)
+        ser.bind(add)
+
+        while (true) {
+            try {
+                cli = ser.accept()
+                var jj = ByteBuffer.allocate(16)
+                var i = cli.read(jj)
+                var xx = android.os.Build.VERSION.SDK_INT
+                if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
+                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                        .build();
+                    recorder =
+                        AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(RECORDER_SAMPLERATE)
+                                .setChannelMask(RECORDER_CHANNELS)
+                                .build()
+                        )
+                            .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                            .build();
+                } else {
+                    recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
+                        .setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(RECORDER_SAMPLERATE)
+                                .setChannelMask(RECORDER_CHANNELS)
+                                .build()
+                        )
+                        .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                        .build();
+                }
+                recorder.startRecording();
+                var soundData = ShortArray(BufferElements2Rec)
+                while (true) {
+                    recorder.read(soundData, 0, BufferElements2Rec)
+                    var d = util.short2byte(soundData)
+                    cli.write(ByteBuffer.wrap(d))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                cli.close()
+                recorder.stop()
+                recorder.release()
+            }
+        }
+    }
+}
+
 class thr3 : Thread() {
     lateinit var upper: MainActivity
     override fun run() {
@@ -202,16 +261,14 @@ class thr3 : Thread() {
                 var jj = ByteBuffer.allocate(16)
                 var rr = cli.read(jj)
 
-                if(rr==2)
-                {
+                if (rr == 2) {
                     var ww = 0
-                    while (ww<50&& isRecording)
-                    {
+                    while (ww < 50 && isRecording) {
                         Thread.sleep(100)
                         ww += 1
                     }
                     var b = soundData_b.sliceArray(0 until dataLen_b)
-                    var bb = ByteBuffer.wrap(  util.short2byte(b))
+                    var bb = ByteBuffer.wrap(util.short2byte(b))
                     var si = bb.array().size
                     var co = 0
                     cli.configureBlocking(false)
@@ -223,22 +280,19 @@ class thr3 : Thread() {
                     }
                     selector.close()
                     cli.close()
-                }
-                else if(rr==1)
-                {
+                } else if (rr == 1) {
                     jj.flip()
                     var a = jj.get()
                     cli.close()
-                    if(a==0.toByte())
+                    if (a == 0.toByte())
                         upper.runOnUiThread({ upper.doStartIn() })
-                    if(a==1.toByte())
+                    if (a == 1.toByte())
                         upper.runOnUiThread({ upper.doStartOut() })
-                    if(a==2.toByte())
+                    if (a == 2.toByte())
                         upper.runOnUiThread({ upper.doStop() })
 
 
-                }
-                else {
+                } else {
                     cli.close()
                     continue
                 }
@@ -303,7 +357,7 @@ class thr : Thread() {
     private fun virtualDisplay() {
         mVirtualDisplay = mMediaProjection!!.createVirtualDisplay(
             "screen-mirror",
-            mScreenWidth, mScreenWidth,
+            mScreenWidth, mScreenHeight,
             mScreenDensity,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mImageReader?.surface,
             null,
@@ -386,8 +440,7 @@ class thr : Thread() {
                 var jj = ByteBuffer.allocate(16)
                 var rr = cli.read(jj)
 
-                if(rr==16)
-                {
+                if (rr == 16) {
                     jj.flip()
                     jj.order(ByteOrder.nativeOrder())
                     var xbegin = jj.getInt()
@@ -421,8 +474,7 @@ class thr : Thread() {
                     }
                     selector.close()
                     cli.close()
-                }
-                else {
+                } else {
                     cli.close()
                     continue
                 }
@@ -473,8 +525,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<EditText>(R.id.ip).setText(String(ss))
     }
 
-    fun doStartIn(){
-        if( !findViewById<Button>(R.id.startBtn).isEnabled)
+    fun doStartIn() {
+        if (!findViewById<Button>(R.id.startBtn).isEnabled)
             return
         hasStop = false
         findViewById<Button>(R.id.startBtn).isEnabled = false
@@ -482,8 +534,8 @@ class MainActivity : AppCompatActivity() {
         iniAudio(1)
     }
 
-    fun doStartOut(){
-        if( !findViewById<Button>(R.id.startoutBtn).isEnabled)
+    fun doStartOut() {
+        if (!findViewById<Button>(R.id.startoutBtn).isEnabled)
             return
         hasStop = false
         findViewById<Button>(R.id.startoutBtn).isEnabled = false
@@ -491,7 +543,7 @@ class MainActivity : AppCompatActivity() {
         iniAudio(2)
     }
 
-    fun doStop(){
+    fun doStop() {
         hasStop = true
     }
 
@@ -513,14 +565,15 @@ class MainActivity : AppCompatActivity() {
         recorder.stop()
         recorder.release()
         this.runOnUiThread {
-            recordOver(soundData,dataLen)
+            recordOver(soundData, dataLen)
         }
 
     }
 
     fun iniAudio(i: Int) {
         try {
-            if (i == 1&& full_version) {
+            var xx = android.os.Build.VERSION.SDK_INT
+            if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
                     .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                     .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
@@ -570,13 +623,6 @@ class MainActivity : AppCompatActivity() {
             if (co + writeLen > dataLen2)
                 break
             var bb = soundData2.slice(co until co + writeLen).toShortArray()
-//            for (i in bb)
-//            {
-//                if(i>1000.toShort())
-//                {
-//                  hasStop = false
-//                }
-//            }
             var d = util.short2byte(bb)
             audio.write(d, 0, writeLen * 2)
             co += writeLen
@@ -614,7 +660,7 @@ class MainActivity : AppCompatActivity() {
         tt.start()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+
     @SuppressLint("ServiceCast", "WrongConstant")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -624,7 +670,7 @@ class MainActivity : AppCompatActivity() {
         if (resultCode != Activity.RESULT_OK) {
             System.exit(0)
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || data == null) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || data == null) {
             System.exit(0)
         }
         if (data != null) {
@@ -635,6 +681,8 @@ class MainActivity : AppCompatActivity() {
             val metrics = DisplayMetrics()
             a.getDefaultDisplay().getMetrics(metrics)
             worker.mScreenDensity = metrics.densityDpi
+            //   worker.mScreenWidth = metrics.widthPixels
+            // worker.mScreenHeight = metrics.heightPixels
             worker.mResultData = data.clone() as Intent
             worker.isDaemon = true
             worker.start()
@@ -642,8 +690,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun q() {
-        if(!full_version)
-        {
+        if (!full_version) {
             System.exit(0)
             return
         }
@@ -653,66 +700,64 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    fun floorV(a:Int):Short
-    {
-        if(a>Short.MAX_VALUE)
+    fun floorV(a: Int): Short {
+        if (a > Short.MAX_VALUE)
             return Short.MAX_VALUE
-        if(a<Short.MIN_VALUE)
+        if (a < Short.MIN_VALUE)
             return Short.MIN_VALUE
         return a.toShort()
     }
-    fun dealCha(met:(i:Short)->Int)
-    {
+
+    fun dealCha(met: (i: Short) -> Int) {
         if (cat) {
-            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] = floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
+            soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
+                floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
             showVal()
             return
         }
 
-        for (i in catB .. catE) {
+        for (i in catB..catE) {
             soundData[i] = floorV(met(soundData[i]))
         }
         showVal()
     }
 
-    fun showVal()
-    {
-        var progress=  findViewById<SeekBar>(R.id.seekBar3).progress
-        progress = progress - (progress%6)
+    fun showVal() {
+        var progress = findViewById<SeekBar>(R.id.seekBar3).progress
+        progress = progress - (progress % 6)
         var st = "${progress}<br/>"
-        for (i in 0 until 6*12) {
+        for (i in 0 until 6 * 12) {
             var ss = soundData[progress + i].toString()
-            if( soundData[progress + i]>0)
-            {
-                st +=  "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+            if (soundData[progress + i] > 0) {
+                st += "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
+            } else {
+                st += "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
             }
-            else
-            {
-                st +=  "<font color=#00ff00 >${ss}&nbsp&nbsp&nbsp </font>"
-            }
-            if((i+1)%6==0 && i!=6*12-1)
-                st+="<br/>"
+            if ((i + 1) % 6 == 0 && i != 6 * 12 - 1)
+                st += "<br/>"
         }
 
         findViewById<TextView>(R.id.textView).setText(Html.fromHtml(st))
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        if(full_version)
-        {
+        if (full_version) {
             var t = thr3()
             t.upper = this
             t.start()
+            var tx = thrSoundStream()
+            tx.start()
         }
         try {
             iniText()
+        } catch (e: Exception) {
         }
-        catch (e:Exception)
-        {}
+//findViewById<EditText>(R.id.ip).
 
-        findViewById<Button>(R.id.stop2btn).setOnClickListener{
+        findViewById<Button>(R.id.stop2btn).setOnClickListener {
             findViewById<Button>(R.id.stop2btn).isEnabled = false
             var t = thr4()
             t.upper = this
@@ -721,7 +766,7 @@ class MainActivity : AppCompatActivity() {
             t.start()
         }
 
-        findViewById<Button>(R.id.in2btn).setOnClickListener{
+        findViewById<Button>(R.id.in2btn).setOnClickListener {
             saveText()
             findViewById<Button>(R.id.in2btn).isEnabled = false
             findViewById<Button>(R.id.out2btn).isEnabled = false
@@ -732,7 +777,7 @@ class MainActivity : AppCompatActivity() {
             t.start()
         }
 
-        findViewById<Button>(R.id.out2btn).setOnClickListener{
+        findViewById<Button>(R.id.out2btn).setOnClickListener {
             saveText()
             findViewById<Button>(R.id.in2btn).isEnabled = false
             findViewById<Button>(R.id.out2btn).isEnabled = false
@@ -754,8 +799,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.catbtn).setOnClickListener {
             cat = !cat
-            if(firstCat)
-            {
+            if (firstCat) {
                 firstCat = false
                 cat = true
             }
@@ -766,13 +810,13 @@ class MainActivity : AppCompatActivity() {
                 findViewById<Button>(R.id.catbtn).setText("cat")
                 catE = findViewById<SeekBar>(R.id.seekBar3).progress
             }
-            findViewById<TextView>(R.id.textViewcha).setText( "${catB},${catE}")
+            findViewById<TextView>(R.id.textViewcha).setText("${catB},${catE}")
         }
         findViewById<Button>(R.id.btnc2).setOnClickListener {
-            dealCha { it*2 }
+            dealCha { it * 2 }
         }
         findViewById<Button>(R.id.btnchu2).setOnClickListener {
-            dealCha { it/2 }
+            dealCha { it / 2 }
         }
 
         findViewById<Button>(R.id.button).setOnClickListener { q() }
@@ -781,7 +825,7 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 30,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        dealCha { it-1 }
+                        dealCha { it - 1 }
                     }
                 })
         )
@@ -790,7 +834,7 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 30,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        dealCha { it+1 }
+                        dealCha { it + 1 }
                     }
                 })
         )
@@ -799,7 +843,7 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 10,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        dealCha { it+100 }
+                        dealCha { it + 100 }
                     }
                 })
         )
@@ -807,7 +851,7 @@ class MainActivity : AppCompatActivity() {
             RepeatListener(400, 10,
                 object : View.OnClickListener {
                     override fun onClick(view: View?) {
-                        dealCha { it-100 }
+                        dealCha { it - 100 }
                     }
                 })
         )
@@ -875,8 +919,7 @@ class MainActivity : AppCompatActivity() {
                 progress: Int,
                 fromUser: Boolean
             ) {
-                if(fromUser)
-                {
+                if (fromUser) {
                     fixed = false
                     findViewById<Button>(R.id.fixbtn).setText("n")
                 }
@@ -921,8 +964,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         )
-        if(full_version)
-        {
+        if (full_version) {
             var projectionManager =
                 getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
@@ -930,7 +972,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun recordOver(d:ShortArray,l:Int) {
+    fun recordOver(d: ShortArray, l: Int) {
         soundData = d
         dataLen = l
         findViewById<Button>(R.id.startBtn).isEnabled = true
@@ -942,3 +984,4 @@ class MainActivity : AppCompatActivity() {
     }
 
 }
+
