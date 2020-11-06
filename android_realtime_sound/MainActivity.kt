@@ -23,14 +23,14 @@ class thr5 : Thread() {
     override fun run() {
         var bufsize = AudioTrack.getMinBufferSize(
             (44100).toInt(),
-            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         );
 
         var audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
             (44100).toInt(), //sample rate
-            AudioFormat.CHANNEL_OUT_STEREO, //2 channel
+            AudioFormat.CHANNEL_OUT_MONO, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
             bufsize,
             AudioTrack.MODE_STREAM
@@ -41,7 +41,7 @@ class thr5 : Thread() {
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                     .setSampleRate(44100)
-                    .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                    .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                     .build()
             )
             .setBufferSizeInBytes(1024 * 2)
