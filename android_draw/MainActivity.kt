@@ -18,11 +18,12 @@ import java.nio.channels.ServerSocketChannel
 //config before compile
 var coX = 10
 var coY = 30
-var boxLen = 40 // draw box length
-var wiLen = 20 // space between widgets
-var wiHei = 80 //widget height
+var boxLen = 60 // draw box length
+var wiLen = 30 // space between widgets
+var wiHei = 120 //widget height
 var leftM = coX* boxLen+50
 //end of config
+var g_port = 8898
 
 class thrC2 : Thread() {
     lateinit var upper: MainActivity
@@ -42,7 +43,7 @@ class thrC2 : Thread() {
 
     override fun run() {
         var s = ServerSocketChannel.open()
-        var add = InetSocketAddress("0.0.0.0", 8898)
+        var add = InetSocketAddress("0.0.0.0", g_port)
         s.socket().bind(add)
 
         while (true)
@@ -95,7 +96,7 @@ class thrC : Thread() {
 
     override fun run() {
         var s = ServerSocketChannel.open()
-        var add = InetSocketAddress("0.0.0.0", 8898)
+        var add = InetSocketAddress("0.0.0.0", g_port)
         s.socket().bind(add)
         //   s.bind(add)
         for (i in 0..coX * coY) {
