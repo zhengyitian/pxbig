@@ -25,6 +25,7 @@ numdevices = info.get('deviceCount')
 for i in range(0, numdevices):
     if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
         xx =  audio.get_device_info_by_host_api_device_index(0, i).get('name')
+
         print("Input Device id ", i, " - ",xx)
 
 print("-------------------------------------------------------------")
@@ -32,13 +33,13 @@ print("-------------------------------------------------------------")
 index = int(input())
 print("recording via index "+str(index))
 
-stream = audio.open(format=FORMAT, channels=CHANNELS,
-                    rate=RATE, input=True,input_device_index = index,
-                frames_per_buffer=CHUNK)
-#https://github.com/intxcc/pyaudio_portaudio
 #stream = audio.open(format=FORMAT, channels=CHANNELS,
                     #rate=RATE, input=True,input_device_index = index,
-                #frames_per_buffer=CHUNK,as_loopback = True)
+                #frames_per_buffer=CHUNK)
+#https://github.com/intxcc/pyaudio_portaudio
+stream = audio.open(format=FORMAT, channels=CHANNELS,
+                    rate=RATE, input=True,input_device_index = index,
+                frames_per_buffer=CHUNK,as_loopback = True)
                 
 print ("recording started")
 Recordframes = []
