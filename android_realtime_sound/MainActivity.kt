@@ -16,26 +16,108 @@ import java.nio.channels.SocketChannel
 
 var g_stop = false
 
-class thr5 : Thread() {
-    var cheng = 0.0
-    var jia = 0.0
 
-    override fun run() {
+class pl(
+    var cheng: Double,
+    var jia: Double,
+    var kuai: Double,
+    var onePieceTime: Double,
+    var outFormat: Int
+) {
+    lateinit var audio: AudioTrack
+    var playFre = 0.0
+    var oriPos = 0
+    var playPos = 0
+    var totalLen = onePieceTime * playFre
+    var aheadLen = (playFre - 44100) * onePieceTime
+    var buf = ShortArray(0)
+    var writeL = (kuai * 1024).toInt()
+
+    init {
+        if (kuai > 3 || kuai < 0.3)
+            kuai = 1.0
+
+        playFre = 44100 * kuai
+        totalLen = onePieceTime * playFre
+        aheadLen = (playFre - 44100) * onePieceTime
+        buf = ShortArray(totalLen.toInt() + 1024 * 1024)
+        writeL = (kuai * 1024).toInt()
+
         var bufsize = AudioTrack.getMinBufferSize(
-            (44100).toInt(),
-            AudioFormat.CHANNEL_OUT_MONO,
+            (playFre).toInt(),
+            outFormat,
             AudioFormat.ENCODING_PCM_16BIT
         );
-
-        var audio = AudioTrack(
+        audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
-            (44100).toInt(), //sample rate
-            AudioFormat.CHANNEL_OUT_MONO, //2 channel
+            (playFre).toInt(), //sample rate
+            outFormat, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
             bufsize,
             AudioTrack.MODE_STREAM
         );
         audio.play()
+    }
+
+    fun inData(soundData: ShortArray) {
+        if (kuai >= 1) {
+            if (oriPos > totalLen) {
+                oriPos = 0
+                playPos = 0
+            }
+
+            for (i in 0..1023) {
+                var aa = soundData[i] * cheng + jia
+                if (aa >= Short.MAX_VALUE)
+                    buf[oriPos] = Short.MAX_VALUE
+                else if (aa <= Short.MIN_VALUE)
+                    buf[oriPos] = Short.MIN_VALUE
+                else
+                    buf[oriPos] = aa.toShort()
+                oriPos += 1
+            }
+            if (oriPos >= aheadLen) {
+                var dd = buf.slice(playPos until playPos + writeL).toShortArray()
+                playPos += writeL
+                audio.write(util.short2byte(dd), 0, writeL * 2)
+            }
+        } else {
+            if (playPos > totalLen) {
+                oriPos = 0
+                playPos = 0
+            }
+
+            if (oriPos < totalLen) {
+                for (i in 0..1023) {
+                    var aa = soundData[i] * cheng + jia
+                    if (aa >= Short.MAX_VALUE)
+                        buf[oriPos] = Short.MAX_VALUE
+                    else if (aa <= Short.MIN_VALUE)
+                        buf[oriPos] = Short.MIN_VALUE
+                    else
+                        buf[oriPos] = aa.toShort()
+                    oriPos += 1
+                }
+            }
+            var dd = buf.slice(playPos until playPos + writeL).toShortArray()
+            playPos += writeL
+            audio.write(util.short2byte(dd), 0, writeL * 2)
+        }
+    }
+
+    fun close() {
+        audio.stop()
+        audio.release()
+    }
+}
+
+class thr5 : Thread() {
+    var cheng = 0.0
+    var jia = 0.0
+    var kuai = 1.0
+    var onePieceTime = 6.0
+
+    override fun run() {
         var recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
             .setAudioFormat(
                 AudioFormat.Builder()
@@ -47,23 +129,13 @@ class thr5 : Thread() {
             .setBufferSizeInBytes(1024 * 2)
             .build();
         recorder.startRecording();
+        var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
         var soundData = ShortArray(1024)
-        var d = ShortArray(1024)
         while (!g_stop) {
             recorder.read(soundData, 0, 1024)
-            for (i in 0..1023) {
-                var aa = soundData[i] * cheng + jia
-                if (aa >= Short.MAX_VALUE)
-                    d[i] = Short.MAX_VALUE
-                else if (aa <= Short.MIN_VALUE)
-                    d[i] = Short.MIN_VALUE
-                else
-                    d[i] = aa.toShort()
-            }
-            audio.write(util.short2byte(d), 0, 2048)
+            pp.inData(soundData)
         }
-        audio.stop()
-        audio.release()
+        pp.close()
         recorder.stop()
         recorder.release()
     }
@@ -74,27 +146,15 @@ class thr4 : Thread() {
     var ip = ""
     var cheng = 0.0
     var jia = 0.0
+    var kuai = 1.0
+    var onePieceTime = 6.0
 
     override fun run() {
         var so = SocketChannel.open()
         var add = InetSocketAddress(ip, 18799)
         so.connect(add)
         so.write(ByteBuffer.allocate(i))
-        var bufsize = AudioTrack.getMinBufferSize(
-            (44100).toInt(),
-            AudioFormat.CHANNEL_OUT_STEREO,
-            AudioFormat.ENCODING_PCM_16BIT
-        );
-
-        var audio = AudioTrack(
-            AudioManager.STREAM_MUSIC,
-            (44100).toInt(), //sample rate
-            AudioFormat.CHANNEL_OUT_STEREO, //2 channel
-            AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-            bufsize,
-            AudioTrack.MODE_STREAM
-        );
-        audio.play()
+        var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
         var b = ByteBuffer.allocate(2048).order(ByteOrder.LITTLE_ENDIAN)
         var d = ShortArray(1024)
         while (!g_stop) {
@@ -112,13 +172,11 @@ class thr4 : Thread() {
                 else
                     d[i] = aa.toShort()
             }
-
             b.clear()
-            audio.write(util.short2byte(d), 0, 2048)
+            pp.inData(d)
         }
         so.close()
-        audio.stop()
-        audio.release()
+        pp.close()
     }
 }
 
@@ -158,6 +216,8 @@ class MainActivity : AppCompatActivity() {
             var t = thr5()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
+            t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
         }
         findViewById<Button>(R.id.btn_in).setOnClickListener {
@@ -170,6 +230,8 @@ class MainActivity : AppCompatActivity() {
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
+            t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
         }
         findViewById<Button>(R.id.btn_out).setOnClickListener {
@@ -182,6 +244,8 @@ class MainActivity : AppCompatActivity() {
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
+            t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
         }
         findViewById<Button>(R.id.btn_stop).setOnClickListener {
