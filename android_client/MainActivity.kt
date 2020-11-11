@@ -27,11 +27,11 @@ import java.nio.channels.SocketChannel
 //redmi 3s 700
 
 
-var maxX = 1000
-var maxY = 1000
+var maxX = 700
+var maxY = 700
 
 //picture maxSize got from server
-var showLen = 1000
+var showLen = 700
 //end of config
 
 var xs = 0
@@ -42,6 +42,7 @@ var yCapLen = 2244
 var g_reso = 0
 
 var pause = false
+
 class imageInfo(
     var reso: Int = 0,
     var x: Int = 0,
@@ -375,19 +376,26 @@ class thrC : Thread() {
             var re = 0
             var se = Selector.open()
             s.register(se, SelectionKey.OP_READ)
+
             while (re != xl * yl * 4) {
-                se.select(maxWaitTime + 100)
+                if (System.currentTimeMillis() - sT > maxWaitTime) {
+                    s.close()
+                    se.close()
+                    return ByteBuffer.allocate(0)
+                }
+                var r = se.select(maxWaitTime + 100 - (System.currentTimeMillis() - sT))
                 if (System.currentTimeMillis() - sT > maxWaitTime) {
                     s.close()
                     se.close()
                     return ByteBuffer.allocate(0)
                 }
                 var x = s.read(ss)
-                if (x == 0 && re != xl * yl * 4) {
+                if (x <= 0 && re != xl * yl * 4) {
                     s.close()
                     return ByteBuffer.allocate(0)
                 }
                 re += x
+                //      println("got len  ${re}")
             }
             se.close()
             s.close()
@@ -645,7 +653,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun ss() {
-        if(im.img==null)
+        if (im.img == null)
             return
         var x = findViewById<SeekBar>(R.id.seekBar1).progress - im.x
         var y = findViewById<SeekBar>(R.id.seekBar2).progress - im.y
