@@ -76,7 +76,7 @@ class pl(
                     buf[oriPos] = aa.toShort()
                 oriPos += 1
             }
-            if (oriPos >= aheadLen||playPos<totalLen) {
+            if (oriPos >= aheadLen && playPos<totalLen) {
                 var dd = buf.slice(playPos until playPos + writeL).toShortArray()
                 playPos += writeL
                 audio.write(util.short2byte(dd), 0, writeL * 2)
@@ -118,7 +118,7 @@ class thr5 : Thread() {
     var onePieceTime = 6.0
 
     override fun run() {
-        var recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
+        var recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
