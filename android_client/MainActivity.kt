@@ -414,20 +414,20 @@ class MainActivity : AppCompatActivity() {
     var hasStart = false
     var stepMode = false
     var im = imageInfo()
-    var lastKeyDown = System.currentTimeMillis()-1000
+    var lastKeyDown = System.currentTimeMillis()-100000
     var keyDownCause = 0 //0:to 0,1:pause
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
         {
-            var lastKeyDown = System.currentTimeMillis()-1000
+            lastKeyDown = System.currentTimeMillis()-100000
             if (keyDownCause==0)
             {
                 findViewById<SeekBar>(R.id.seekBar4).progress = 0
             }
             else
             {
-                onPauseBtnCli()
+               // onPauseBtnCli()
             }
             keyDownCause = 0
             return true
@@ -437,9 +437,10 @@ class MainActivity : AppCompatActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
         {
-            if (System.currentTimeMillis()-lastKeyDown<100)
+            if (System.currentTimeMillis()-lastKeyDown<10000 && keyDownCause==0)
             {
                keyDownCause = 1
+                onPauseBtnCli()
             }
             lastKeyDown = System.currentTimeMillis()
             return true
