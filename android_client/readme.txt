@@ -8,3 +8,6 @@
 程序会在后台向 127.0.0.1 和 启动ip（初始化ip，非点start后的ip）请求drawinfo
 处于暂停时，可通过第一、第二滚动条改变图片位置。
 图片左上像素的红绿蓝值显示在ip输入框里面。
+volum up key 放大倍数10
+volum down key 放大倍数0
+长按volum down key暂停
