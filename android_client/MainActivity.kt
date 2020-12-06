@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Handler
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
@@ -413,6 +414,43 @@ class MainActivity : AppCompatActivity() {
     var hasStart = false
     var stepMode = false
     var im = imageInfo()
+    var lastKeyDown = System.currentTimeMillis()-1000
+    var keyDownCause = 0 //0:to 0,1:pause
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
+        {
+            var lastKeyDown = System.currentTimeMillis()-1000
+            if (keyDownCause==0)
+            {
+                findViewById<SeekBar>(R.id.seekBar4).progress = 0
+            }
+            else
+            {
+                onPauseBtnCli()
+            }
+            keyDownCause = 0
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
+        {
+            if (System.currentTimeMillis()-lastKeyDown<100)
+            {
+               keyDownCause = 1
+            }
+            lastKeyDown = System.currentTimeMillis()
+            return true
+        }
+        if (keyCode==KeyEvent.KEYCODE_VOLUME_UP)
+        {
+            findViewById<SeekBar>(R.id.seekBar4).progress = 10
+            return true
+        }
+       return  super.onKeyDown(keyCode, event)
+    }
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
@@ -458,6 +496,20 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    fun onPauseBtnCli()
+    {
+        if (stepMode) {
+            pause = false
+            return
+        }
+        pause = !pause
+        if (pause) {
+            findViewById<Button>(R.id.pauseBtn).setText("->")
+        } else {
+            findViewById<Button>(R.id.pauseBtn).setText("||")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
@@ -484,16 +536,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.pauseBtn).setOnClickListener {
-            if (stepMode) {
-                pause = false
-                return@setOnClickListener
-            }
-            pause = !pause
-            if (pause) {
-                findViewById<Button>(R.id.pauseBtn).setText("->")
-            } else {
-                findViewById<Button>(R.id.pauseBtn).setText("||")
-            }
+            onPauseBtnCli()
+
         }
 
         findViewById<Button>(R.id.seekBar1b1).setOnTouchListener(

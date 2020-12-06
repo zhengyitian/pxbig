@@ -2,10 +2,11 @@ import socket
 import struct
 
 saveDir = 'e:/drawinfo/'
+saveDir = '/home/a/drawinfo2/'
 import os
 l = os.listdir(saveDir)
 print(l)
-add = ('192.168.1.115',8898)
+add = ('192.168.0.102',8898)
 
 
 def ser(i,ff):    

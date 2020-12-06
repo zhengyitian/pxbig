@@ -1,12 +1,12 @@
 import socket
 saveDir = '/home/a/drawinfo2/'
-saveDir = 'e:/drawinfo/'
+#saveDir = 'e:/drawinfo/'
 
 
 
 add = ('192.168.1.110',8898)
 add = ('127.0.0.1',8898)
-add = ('192.168.1.110',8898)
+add = ('192.168.0.101',8898)
 
 def xx():
     s = socket.socket()
