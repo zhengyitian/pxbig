@@ -39,8 +39,8 @@ var full_version = true
 
 //screen size to capture
 //huawei p20 2244 2244
-var con_width = 2244
-var con_height = 2244
+var con_width = 1520
+var con_height = 1520
 
 //end of config
 
@@ -455,8 +455,8 @@ class thr : Thread() {
                     uncompressedBuffer.position(0)
                     var bb = ByteBuffer.allocate(xlen * ylen * 4)
                     for (j in ybegin until ybegin + ylen) {
-                        var startPos = xbegin + j * 2244
-                        var endPos = xbegin + j * 2244 + xlen
+                        var startPos = xbegin + j * con_width
+                        var endPos = xbegin + j * con_width + xlen
                         bb.put(
                             uncompressedBuffer.array().slice(startPos * 4 until endPos * 4)
                                 .toByteArray()
