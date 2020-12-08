@@ -39,8 +39,8 @@ var full_version = true
 
 //screen size to capture
 //huawei p20 2244 2244
-var con_width = 1520
-var con_height = 1520
+var con_width = 1920
+var con_height = 1920
 
 //end of config
 
@@ -670,7 +670,8 @@ class MainActivity : AppCompatActivity() {
         if (resultCode != Activity.RESULT_OK) {
             System.exit(0)
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || data == null) {
+        var xx = Build.VERSION.SDK_INT
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || data == null) {
             System.exit(0)
         }
         if (data != null) {
@@ -755,7 +756,7 @@ class MainActivity : AppCompatActivity() {
             iniText()
         } catch (e: Exception) {
         }
-//findViewById<EditText>(R.id.ip).
+
 
         findViewById<Button>(R.id.stop2btn).setOnClickListener {
             findViewById<Button>(R.id.stop2btn).isEnabled = false
