@@ -43,6 +43,7 @@ var yCapLen = 2244
 var g_reso = 0
 
 var pause = false
+var lastShowTime = System.currentTimeMillis()
 
 class imageInfo(
     var reso: Int = 0,
@@ -232,6 +233,8 @@ class thrC : Thread() {
     }
 
     fun draw(ss: ByteBuffer, xl: Int, yl: Int, ret: imageInfo) {
+        var hasFreshTime = false
+
         var xx = maxX / reso
         var yy = maxY / reso
 
@@ -266,6 +269,11 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
+                    if(!hasFreshTime && (r>0||g>0||b>0))
+                    {
+                        hasFreshTime = true
+                        lastShowTime = System.currentTimeMillis()
+                    }
                     ret.b[(i + j * xx) * 3] = r
                     ret.b[(i + j * xx) * 3 + 1] = g
                     ret.b[(i + j * xx) * 3 + 2] = b
@@ -284,6 +292,11 @@ class thrC : Thread() {
             Thread.sleep(10 + lastCallTime - System.currentTimeMillis())
         lastCallTime = System.currentTimeMillis()
         while (true) {
+            if (System.currentTimeMillis()- lastShowTime>1000*30*60)
+            {
+                System.exit(0)
+            }
+
             if (pause) {
                 Thread.sleep(10)
                 continue
@@ -323,6 +336,7 @@ class thrC : Thread() {
             ret.xlen = xl
             ret.ylen = yl
             ret.b = IntArray(xl * yl * 3)
+            var hasFreshTime = false
             var bb = Bitmap.createBitmap(xl, yl, Bitmap.Config.ARGB_8888)
             var br = ByteArray(xl * yl * 4)
             for (j in 0 until yl) {
@@ -345,6 +359,11 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
+                    if(!hasFreshTime && (r>0||g>0||b>0))
+                    {
+                        hasFreshTime = true
+                        lastShowTime = System.currentTimeMillis()
+                    }
                     ret.b[(i + xl * j) * 3] = r
                     ret.b[(i + xl * j) * 3 + 1] = g
                     ret.b[(i + xl * j) * 3 + 2] = b
