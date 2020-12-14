@@ -17,6 +17,7 @@ import java.lang.Math.abs
 
 var g_stop = false
 var g_cha = DoubleArray(16) {1.0}
+var g_cha2 = DoubleArray(16) {0.0}
 
 class pl(
     var cheng: Double,
@@ -69,7 +70,7 @@ class pl(
 
             for (i in 0..1023) {
                 var ab = abs(soundData[i].toInt())%16
-                var aa = soundData[i]*g_cha[ab] * cheng + jia
+                var aa = (soundData[i]*g_cha[ab]+ g_cha2[ab]) * cheng + jia
                 if (aa >= Short.MAX_VALUE)
                     buf[oriPos] = Short.MAX_VALUE
                 else if (aa <= Short.MIN_VALUE)
@@ -224,12 +225,18 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btn_load).setOnClickListener {
             var bb = g_cha[findViewById<EditText>(R.id.text_index).text.toString().toInt()]
+            var bb2 = g_cha2[findViewById<EditText>(R.id.text_index).text.toString().toInt()]
             findViewById<EditText>(R.id.text_cha).setText(bb.toString())
+            findViewById<EditText>(R.id.text_cha2).setText(bb2.toString())
         }
+
         findViewById<Button>(R.id.btn_save).setOnClickListener {
             g_cha[findViewById<EditText>(R.id.text_index).text.toString().toInt()] =
                 findViewById<EditText>(R.id.text_cha).text.toString().toDouble()
+            g_cha2[findViewById<EditText>(R.id.text_index).text.toString().toInt()] =
+                findViewById<EditText>(R.id.text_cha2).text.toString().toDouble()
         }
+
         findViewById<Button>(R.id.btn_in).setOnClickListener {
             saveText()
             g_stop = false
