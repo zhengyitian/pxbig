@@ -13,9 +13,10 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SocketChannel
+import java.lang.Math.abs
 
 var g_stop = false
-
+var g_cha = DoubleArray(16) {1.0}
 
 class pl(
     var cheng: Double,
@@ -67,7 +68,8 @@ class pl(
             }
 
             for (i in 0..1023) {
-                var aa = soundData[i] * cheng + jia
+                var ab = abs(soundData[i].toInt())%16
+                var aa = soundData[i]*g_cha[ab] * cheng + jia
                 if (aa >= Short.MAX_VALUE)
                     buf[oriPos] = Short.MAX_VALUE
                 else if (aa <= Short.MIN_VALUE)
@@ -219,6 +221,14 @@ class MainActivity : AppCompatActivity() {
             t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
             t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
+        }
+        findViewById<Button>(R.id.btn_load).setOnClickListener {
+            var bb = g_cha[findViewById<EditText>(R.id.text_index).text.toString().toInt()]
+            findViewById<EditText>(R.id.text_cha).setText(bb.toString())
+        }
+        findViewById<Button>(R.id.btn_save).setOnClickListener {
+            g_cha[findViewById<EditText>(R.id.text_index).text.toString().toInt()] =
+                findViewById<EditText>(R.id.text_cha).text.toString().toDouble()
         }
         findViewById<Button>(R.id.btn_in).setOnClickListener {
             saveText()
