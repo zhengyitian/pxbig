@@ -108,11 +108,13 @@
                 android:text="stop" />
         </LinearLayout>
 
+
         <Button
             android:id="@+id/btn_self"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="self" />
+
 
         <Button
             android:id="@+id/btn_q"
@@ -160,6 +162,18 @@
             android:text="load" />
     </LinearLayout>
 
+        <Switch
+            android:id="@+id/switch_in"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text="in" />
+        <Switch
+            android:id="@+id/switch_out"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text="out" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

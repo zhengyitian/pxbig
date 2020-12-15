@@ -1,23 +1,28 @@
 package com.example.sound_stream
 
+
+import android.content.Context
 import android.media.*
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Switch
+import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.lang.Exception
+import java.lang.Math.abs
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SocketChannel
-import java.lang.Math.abs
+
 
 var g_stop = false
 var g_cha = DoubleArray(16) {1.0}
 var g_cha2 = DoubleArray(16) {0.0}
+var g_inCheck = false
+var g_outCheck = false
 
 class pl(
     var cheng: Double,
@@ -121,7 +126,18 @@ class thr5 : Thread() {
     var onePieceTime = 6.0
 
     override fun run() {
-        var recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
+        var tt=0
+        if (!g_inCheck){
+            tt = MediaRecorder.AudioSource.CAMCORDER
+        }
+
+        else
+        {
+            tt = MediaRecorder.AudioSource.MIC
+        }
+
+
+        var recorder = AudioRecord.Builder().setAudioSource(tt)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -212,6 +228,21 @@ class MainActivity : AppCompatActivity() {
             iniText()
         } catch (e: Exception) {
         }
+       findViewById<Switch>(R.id.switch_in).setOnCheckedChangeListener { _, isChecked ->
+           g_inCheck = isChecked
+       }
+
+        findViewById<Switch>(R.id.switch_out).setOnCheckedChangeListener { _, isChecked ->
+            g_outCheck = isChecked
+            if(g_outCheck)
+            {
+                val m_amAudioManager =
+                    getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                m_amAudioManager.setMode(AudioManager.MODE_RINGTONE or AudioManager.MODE_IN_CALL)
+                m_amAudioManager.setSpeakerphoneOn(true)
+            }
+        }
+
         findViewById<Button>(R.id.btn_self).setOnClickListener {
             saveText()
             g_stop = false
