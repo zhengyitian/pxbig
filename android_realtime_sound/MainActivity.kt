@@ -19,10 +19,37 @@ import java.nio.channels.SocketChannel
 
 
 var g_stop = false
-var g_cha = DoubleArray(16) {1.0}
-var g_cha2 = DoubleArray(16) {0.0}
+var g_cha = DoubleArray(16) { 1.0 }
+var g_cha2 = DoubleArray(16) { 0.0 }
 var g_inCheck = false
 var g_outCheck = false
+
+var d1_cheng = 1.0
+var d1_jia = 0.0
+var d2_cheng = 1.0
+var d2_jia = 0.0
+var d3_cheng = 1.0
+var d3_jia = 0.0
+
+fun setdd(a1: Double, a2: Double, a3: Double, a4: Double, a5: Double, a6: Double) {
+    d1_cheng = a1
+    d1_jia = a2
+    d2_cheng = a3
+    d2_jia = a4
+    d3_cheng = a5
+    d3_jia = a6
+}
+
+fun double2short(aa: Double): Short {
+    if (aa >= Short.MAX_VALUE)
+        return Short.MAX_VALUE
+    else if (aa <= Short.MIN_VALUE)
+        return Short.MIN_VALUE
+    else
+        return aa.toShort()
+}
+
+var con_splitSIze = 3
 
 class pl(
     var cheng: Double,
@@ -44,11 +71,11 @@ class pl(
         if (kuai > 3 || kuai < 0.3)
             kuai = 1.0
 
-        playFre = 44100 * kuai
+        playFre = 44100 * kuai * con_splitSIze
         totalLen = onePieceTime * playFre
-        aheadLen = (playFre - 44100) * onePieceTime
+        aheadLen = (playFre - 44100 * con_splitSIze) * onePieceTime
         buf = ShortArray(totalLen.toInt() + 1024 * 1024)
-        writeL = (kuai * 1024).toInt()
+        writeL = (kuai * 1024 * 3).toInt()
 
         var bufsize = AudioTrack.getMinBufferSize(
             (playFre).toInt(),
@@ -66,25 +93,49 @@ class pl(
         audio.play()
     }
 
+    fun fillData(soundData: ShortArray) {
+        if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
+            for (i in 0..1023) {
+                var ab = abs(soundData[i].toInt()) % 16
+                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                buf[oriPos] = double2short(meanV * d1_cheng + d1_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(meanV * d2_cheng + d2_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(meanV * d3_cheng + d3_jia)
+                oriPos += 1
+            }
+        } else {
+            for (i in 0..1023) {
+                if (i % 2 != 0) continue
+                var ab = abs(soundData[i].toInt()) % 16
+                var mean1 = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                var ab2 = abs(soundData[i + 1].toInt()) % 16
+                var mean2 = (soundData[i + 1] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                buf[oriPos] = double2short(mean1 * d1_cheng + d1_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(mean2 * d1_cheng + d1_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(mean1 * d2_cheng + d2_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(mean2 * d2_cheng + d2_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(mean1 * d3_cheng + d3_jia)
+                oriPos += 1
+                buf[oriPos] = double2short(mean2 * d3_cheng + d3_jia)
+                oriPos += 1
+            }
+        }
+    }
+
     fun inData(soundData: ShortArray) {
         if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
                 playPos = 0
             }
-
-            for (i in 0..1023) {
-                var ab = abs(soundData[i].toInt())%16
-                var aa = (soundData[i]*g_cha[ab]+ g_cha2[ab]) * cheng + jia
-                if (aa >= Short.MAX_VALUE)
-                    buf[oriPos] = Short.MAX_VALUE
-                else if (aa <= Short.MIN_VALUE)
-                    buf[oriPos] = Short.MIN_VALUE
-                else
-                    buf[oriPos] = aa.toShort()
-                oriPos += 1
-            }
-            if (oriPos >= aheadLen && playPos<totalLen) {
+            fillData(soundData)
+            if (oriPos >= aheadLen && playPos < totalLen) {
                 var dd = buf.slice(playPos until playPos + writeL).toShortArray()
                 playPos += writeL
                 audio.write(util.short2byte(dd), 0, writeL * 2)
@@ -94,18 +145,8 @@ class pl(
                 oriPos = 0
                 playPos = 0
             }
-
             if (oriPos < totalLen) {
-                for (i in 0..1023) {
-                    var aa = soundData[i] * cheng + jia
-                    if (aa >= Short.MAX_VALUE)
-                        buf[oriPos] = Short.MAX_VALUE
-                    else if (aa <= Short.MIN_VALUE)
-                        buf[oriPos] = Short.MIN_VALUE
-                    else
-                        buf[oriPos] = aa.toShort()
-                    oriPos += 1
-                }
+                fillData(soundData)
             }
             var dd = buf.slice(playPos until playPos + writeL).toShortArray()
             playPos += writeL
@@ -126,13 +167,10 @@ class thr5 : Thread() {
     var onePieceTime = 6.0
 
     override fun run() {
-        var tt=0
-        if (!g_inCheck){
+        var tt = 0
+        if (!g_inCheck) {
             tt = MediaRecorder.AudioSource.CAMCORDER
-        }
-
-        else
-        {
+        } else {
             tt = MediaRecorder.AudioSource.MIC
         }
 
@@ -183,13 +221,7 @@ class thr4 : Thread() {
             b.flip()
 
             for (i in 0..1023) {
-                var aa = b.getShort() * cheng + jia
-                if (aa >= Short.MAX_VALUE)
-                    d[i] = Short.MAX_VALUE
-                else if (aa <= Short.MIN_VALUE)
-                    d[i] = Short.MIN_VALUE
-                else
-                    d[i] = aa.toShort()
+                d[i] = b.getShort()
             }
             b.clear()
             pp.inData(d)
@@ -228,14 +260,13 @@ class MainActivity : AppCompatActivity() {
             iniText()
         } catch (e: Exception) {
         }
-       findViewById<Switch>(R.id.switch_in).setOnCheckedChangeListener { _, isChecked ->
-           g_inCheck = isChecked
-       }
+        findViewById<Switch>(R.id.switch_in).setOnCheckedChangeListener { _, isChecked ->
+            g_inCheck = isChecked
+        }
 
         findViewById<Switch>(R.id.switch_out).setOnCheckedChangeListener { _, isChecked ->
             g_outCheck = isChecked
-            if(g_outCheck)
-            {
+            if (g_outCheck) {
                 val m_amAudioManager =
                     getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 m_amAudioManager.setMode(AudioManager.MODE_RINGTONE or AudioManager.MODE_IN_CALL)
@@ -260,7 +291,16 @@ class MainActivity : AppCompatActivity() {
             findViewById<EditText>(R.id.text_cha).setText(bb.toString())
             findViewById<EditText>(R.id.text_cha2).setText(bb2.toString())
         }
-
+        findViewById<Button>(R.id.btn_dd).setOnClickListener {
+            setdd(
+                findViewById<EditText>(R.id.dd1).text.toString().toDouble(),
+                findViewById<EditText>(R.id.dd2).text.toString().toDouble(),
+                findViewById<EditText>(R.id.dd3).text.toString().toDouble(),
+                findViewById<EditText>(R.id.dd4).text.toString().toDouble(),
+                findViewById<EditText>(R.id.dd5).text.toString().toDouble(),
+                findViewById<EditText>(R.id.dd6).text.toString().toDouble()
+            )
+        }
         findViewById<Button>(R.id.btn_save).setOnClickListener {
             g_cha[findViewById<EditText>(R.id.text_index).text.toString().toInt()] =
                 findViewById<EditText>(R.id.text_cha).text.toString().toDouble()

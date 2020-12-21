@@ -162,6 +162,65 @@
             android:text="load" />
     </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/dd1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="1" />
+            <EditText
+                android:id="@+id/dd2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="0" />
+            <EditText
+                android:id="@+id/dd3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="1" />
+            <EditText
+                android:id="@+id/dd4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="0" />
+            <EditText
+                android:id="@+id/dd5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="1" />
+            <EditText
+                android:id="@+id/dd6"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:layout_weight="1"
+                android:inputType="numberSigned|number|numberDecimal"
+                android:text="0" />
+
+            <Button
+                android:id="@+id/btn_dd"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="L" />
+        </LinearLayout>
         <Switch
             android:id="@+id/switch_in"
             android:layout_width="wrap_content"
