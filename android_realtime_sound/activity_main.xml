@@ -233,6 +233,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
             android:text="out" />
+        <Switch
+            android:id="@+id/switch_split"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text="split" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -30,6 +30,7 @@ var d2_cheng = 1.0
 var d2_jia = 0.0
 var d3_cheng = 1.0
 var d3_jia = 0.0
+var g_split = false
 
 fun setdd(a1: Double, a2: Double, a3: Double, a4: Double, a5: Double, a6: Double) {
     d1_cheng = a1
@@ -66,10 +67,13 @@ class pl(
     var aheadLen = (playFre - 44100) * onePieceTime
     var buf = ShortArray(0)
     var writeL = (kuai * 1024).toInt()
+    var isSplit = g_split
 
     init {
         if (kuai > 3 || kuai < 0.3)
             kuai = 1.0
+        if (isSplit) con_splitSIze = 3
+        else con_splitSIze = 1
 
         playFre = 44100 * kuai * con_splitSIze
         totalLen = onePieceTime * playFre
@@ -94,6 +98,17 @@ class pl(
     }
 
     fun fillData(soundData: ShortArray) {
+        if (!isSplit) {
+            for (i in 0..1023) {
+                var ab = abs(soundData[i].toInt()) % 16
+                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                buf[oriPos] = double2short(meanV)
+                oriPos += 1
+            }
+            return
+        }
+
+
         if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
             for (i in 0..1023) {
                 var ab = abs(soundData[i].toInt()) % 16
@@ -263,7 +278,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Switch>(R.id.switch_in).setOnCheckedChangeListener { _, isChecked ->
             g_inCheck = isChecked
         }
-
+        findViewById<Switch>(R.id.switch_split).setOnCheckedChangeListener { _, isChecked ->
+            g_split = isChecked
+        }
         findViewById<Switch>(R.id.switch_out).setOnCheckedChangeListener { _, isChecked ->
             g_outCheck = isChecked
             if (g_outCheck) {
