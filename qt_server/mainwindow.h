@@ -3,23 +3,13 @@
 
 
 #include <QMainWindow>
-#include <QPaintEvent>
-#include "qtimer.h"
+
+
 #include "qdebug.h"
 #include "qdatetime.h"
-#include "qpixmap.h"
 #include "qscreen.h"
-#include "QPaintEvent"
-#include "qpainter.h"
-#include "qcursor.h"
-#include "QDesktopWidget"
-#include "QSettings"
 #include "QtNetwork/qtcpsocket.h"
-#include "QHBoxLayout"
-#include "qpushbutton.h"
-#include "qlineedit.h"
 #include "qtcpserver.h"
-
 #include "qguiapplication.h"
 
 class MainWindow : public QWidget
@@ -41,9 +31,12 @@ public:
 public slots:
     void newConnection()
     {
+        static int co=0;
+        co++;
         socket = server->nextPendingConnection();
-        socket->waitForReadyRead(1000);
+        socket->waitForReadyRead(10000);
         auto a = socket->readAll();
+        // qDebug()<<co<<"read:"<<a.size()<<QDateTime::currentMSecsSinceEpoch();
         if(a.size()!=16)
         {
             socket->deleteLater();
@@ -70,7 +63,15 @@ public slots:
             }
         }
         socket->write(d.data(),d.size());
-        socket->waitForBytesWritten(5000);
+
+        auto t1 = QDateTime::currentMSecsSinceEpoch();
+        while (QDateTime::currentMSecsSinceEpoch()-t1<10*1000) {
+            socket->waitForBytesWritten(1000);
+            auto ww =  socket->bytesToWrite();
+            //  qDebug()<<co<<"write:"<<ww<<QDateTime::currentMSecsSinceEpoch();
+            if (ww==0)
+                break;
+        }
         socket->close();
         socket->deleteLater();
         socket = nullptr;
