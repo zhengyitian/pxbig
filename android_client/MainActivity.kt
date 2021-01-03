@@ -269,8 +269,7 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
-                    if(!hasFreshTime && (r>0||g>0||b>0))
-                    {
+                    if (!hasFreshTime && (r > 0 || g > 0 || b > 0)) {
                         hasFreshTime = true
                         lastShowTime = System.currentTimeMillis()
                     }
@@ -292,8 +291,7 @@ class thrC : Thread() {
             Thread.sleep(10 + lastCallTime - System.currentTimeMillis())
         lastCallTime = System.currentTimeMillis()
         while (true) {
-            if (System.currentTimeMillis()- lastShowTime>1000*30*60)
-            {
+            if (System.currentTimeMillis() - lastShowTime > 1000 * 30 * 60) {
                 System.exit(0)
             }
 
@@ -359,8 +357,7 @@ class thrC : Thread() {
                         g += 256
                     if (b < 0)
                         b += 256
-                    if(!hasFreshTime && (r>0||g>0||b>0))
-                    {
+                    if (!hasFreshTime && (r > 0 || g > 0 || b > 0)) {
                         hasFreshTime = true
                         lastShowTime = System.currentTimeMillis()
                     }
@@ -399,23 +396,26 @@ class thrC : Thread() {
 
             while (re != xl * yl * 4) {
                 if (System.currentTimeMillis() - sT > maxWaitTime) {
+                    println("return 2")
                     s.close()
                     se.close()
                     return ByteBuffer.allocate(0)
                 }
                 var r = se.select(maxWaitTime + 100 - (System.currentTimeMillis() - sT))
                 if (System.currentTimeMillis() - sT > maxWaitTime) {
+                    println("return 1")
                     s.close()
                     se.close()
                     return ByteBuffer.allocate(0)
                 }
                 var x = s.read(ss)
                 if (x <= 0 && re != xl * yl * 4) {
+                    println("return 0 ${x},${re}")
                     s.close()
                     return ByteBuffer.allocate(0)
                 }
                 re += x
-                //      println("got len  ${re}")
+                //println("got len  ${x},${re}")
             }
             se.close()
             s.close()
@@ -433,44 +433,39 @@ class MainActivity : AppCompatActivity() {
     var hasStart = false
     var stepMode = false
     var im = imageInfo()
-    var lastKeyDown = System.currentTimeMillis()-100000
+    var lastKeyDown = System.currentTimeMillis() - 100000
     var keyDownCause = 0 //0:to 0,1:pause
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
-        {
-            lastKeyDown = System.currentTimeMillis()-100000
-            if (keyDownCause==0)
-            {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            lastKeyDown = System.currentTimeMillis() - 100000
+            if (keyDownCause == 0) {
                 findViewById<SeekBar>(R.id.seekBar4).progress = 0
-            }
-            else
-            {
-               // onPauseBtnCli()
+            } else {
+                // onPauseBtnCli()
             }
             keyDownCause = 0
             return true
         }
         return super.onKeyUp(keyCode, event)
     }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode==KeyEvent.KEYCODE_VOLUME_DOWN)
-        {
-            if (System.currentTimeMillis()-lastKeyDown<10000 && keyDownCause==0)
-            {
-               keyDownCause = 1
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (System.currentTimeMillis() - lastKeyDown < 10000 && keyDownCause == 0) {
+                keyDownCause = 1
                 onPauseBtnCli()
             }
             lastKeyDown = System.currentTimeMillis()
             return true
         }
-        if (keyCode==KeyEvent.KEYCODE_VOLUME_UP)
-        {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             findViewById<SeekBar>(R.id.seekBar4).progress = 10
             return true
         }
-       return  super.onKeyDown(keyCode, event)
+        return super.onKeyDown(keyCode, event)
     }
+
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "a.txt")
@@ -516,8 +511,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun onPauseBtnCli()
-    {
+    fun onPauseBtnCli() {
         if (stepMode) {
             pause = false
             return

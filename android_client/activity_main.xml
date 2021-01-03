@@ -18,7 +18,7 @@
 
             <Button
                 android:id="@+id/button"
-                android:layout_width="200dp"
+                android:layout_width="230dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:text="start" />
@@ -165,7 +165,7 @@
 
             <SeekBar
                 android:id="@+id/seekBar4"
-                android:layout_width="200dp"
+                android:layout_width="175dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
@@ -185,7 +185,7 @@
 
             <Button
                 android:id="@+id/pauseBtn"
-                android:layout_width="50dp"
+                android:layout_width="65dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="||" />
