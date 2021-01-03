@@ -79,7 +79,7 @@ class pl(
         totalLen = onePieceTime * playFre
         aheadLen = (playFre - 44100 * con_splitSIze) * onePieceTime
         buf = ShortArray(totalLen.toInt() + 1024 * 1024)
-        writeL = (kuai * 1024 * 3).toInt()
+        writeL = (kuai * 1024 * con_splitSIze).toInt()
 
         var bufsize = AudioTrack.getMinBufferSize(
             (playFre).toInt(),
