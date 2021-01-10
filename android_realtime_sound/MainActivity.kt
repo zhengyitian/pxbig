@@ -16,7 +16,14 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SocketChannel
+import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
 
+
+var slag = 0
+var clag = 0
+var sleepTime = 0
 
 var g_stop = false
 var g_cha = DoubleArray(16) { 1.0 }
@@ -213,8 +220,52 @@ class thr5 : Thread() {
     }
 }
 
-class thr4 : Thread() {
-    var i = 0
+var backLock = ReentrantLock()
+var backA = LinkedList<ShortArray>()
+
+class backT(var pp: pl) : Thread() {
+    var stop = false
+    var lagSize = 44100 * clag / 1024
+    var left = ShortArray(1024)
+
+    override fun run() {
+        Thread.sleep(500)
+        while (true) {
+            if (stop) {
+                pp.close()
+                return
+            }
+            backLock.lock()
+            if (backA.isEmpty()) {
+                backLock.unlock()
+                println("sleep")
+                Thread.sleep(sleepTime.toLong())
+                continue
+            }
+            if (backA.size > lagSize + 1) {
+                while (backA.size > lagSize / 2 + 1) {
+                    println("pop ${backA.size}")
+                    backA.pop()
+                }
+            }
+            var ll = ArrayList<ShortArray>()
+            while (backA.isNotEmpty()) {
+                ll.add(backA.pop())
+            }
+            backLock.unlock()
+
+            for (d in ll) {
+                left = left + d
+                while (left.size >= 1024) {
+                    pp.inData(left.slice(0 until 1024).toShortArray())
+                    left = left.slice(1024 until left.size).toShortArray()
+                }
+            }
+        }
+    }
+}
+
+class thr4(var i: Int) : Thread() {
     var ip = ""
     var cheng = 0.0
     var jia = 0.0
@@ -225,24 +276,35 @@ class thr4 : Thread() {
         var so = SocketChannel.open()
         var add = InetSocketAddress(ip, 18799)
         so.connect(add)
-        so.write(ByteBuffer.allocate(i))
+        var bf = ByteBuffer.allocate(10).order(ByteOrder.LITTLE_ENDIAN)
+        bf.putInt(i)
+        bf.putInt(slag)
+        bf.flip()
+        so.write(bf)
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
-        var b = ByteBuffer.allocate(2048).order(ByteOrder.LITTLE_ENDIAN)
-        var d = ShortArray(1024)
+        var b = ByteBuffer.allocate(204800).order(ByteOrder.LITTLE_ENDIAN)
+        backA.clear()
+
+        var backThr = backT(pp)
+        backThr.start()
+
         while (!g_stop) {
-            while (b.position() != 2048) {
+            while (b.position() == 0 || b.position() % 2 != 0) {
                 so.read(b)
             }
+            var po = b.position()
             b.flip()
-
-            for (i in 0..1023) {
+            var d = ShortArray(po / 2)
+            for (i in 0 until po / 2) {
                 d[i] = b.getShort()
             }
             b.clear()
-            pp.inData(d)
+            backLock.lock()
+            backA.add(d)
+            backLock.unlock()
         }
         so.close()
-        pp.close()
+        backThr.stop = true
     }
 }
 
@@ -265,6 +327,16 @@ class MainActivity : AppCompatActivity() {
         var ss = b.sliceArray(0 until rr)
         f.close()
         findViewById<EditText>(R.id.text_ip).setText(String(ss))
+    }
+
+    fun stFunc() {
+        saveText()
+        g_stop = false
+        slag = findViewById<EditText>(R.id.text_slag).text.toString().toInt()
+        clag = findViewById<EditText>(R.id.text_clag).text.toString().toInt()
+        sleepTime = findViewById<EditText>(R.id.text_sleep).text.toString().toInt()
+        findViewById<Button>(R.id.btn_in).isEnabled = false
+        findViewById<Button>(R.id.btn_out).isEnabled = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -326,12 +398,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btn_in).setOnClickListener {
-            saveText()
-            g_stop = false
-            findViewById<Button>(R.id.btn_in).isEnabled = false
-            findViewById<Button>(R.id.btn_out).isEnabled = false
-            var t = thr4()
-            t.i = 1
+            stFunc()
+            var t = thr4(1)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
@@ -340,12 +408,8 @@ class MainActivity : AppCompatActivity() {
             t.start()
         }
         findViewById<Button>(R.id.btn_out).setOnClickListener {
-            saveText()
-            g_stop = false
-            findViewById<Button>(R.id.btn_in).isEnabled = false
-            findViewById<Button>(R.id.btn_out).isEnabled = false
-            var t = thr4()
-            t.i = 2
+            stFunc()
+            var t = thr4(2)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
