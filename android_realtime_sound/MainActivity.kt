@@ -308,6 +308,9 @@ class thr4(var i: Int) : Thread() {
     }
 }
 
+var orimode = 0
+var orispeaker = false
+
 class MainActivity : AppCompatActivity() {
     fun saveText() {
         var path: File = baseContext.filesDir
@@ -340,6 +343,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         this.getSupportActionBar()?.hide();
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -354,12 +358,17 @@ class MainActivity : AppCompatActivity() {
             g_split = isChecked
         }
         findViewById<Switch>(R.id.switch_out).setOnCheckedChangeListener { _, isChecked ->
+            val m_amAudioManager =
+                getSystemService(Context.AUDIO_SERVICE) as AudioManager
             g_outCheck = isChecked
             if (g_outCheck) {
-                val m_amAudioManager =
-                    getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                orimode = m_amAudioManager.mode
+                orispeaker = m_amAudioManager.isSpeakerphoneOn
                 m_amAudioManager.setMode(AudioManager.MODE_RINGTONE or AudioManager.MODE_IN_CALL)
                 m_amAudioManager.setSpeakerphoneOn(true)
+            } else {
+                m_amAudioManager.setMode(orimode)
+                m_amAudioManager.setSpeakerphoneOn(orispeaker)
             }
         }
 
@@ -428,3 +437,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
+
