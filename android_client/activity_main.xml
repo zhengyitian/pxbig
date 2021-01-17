@@ -18,14 +18,14 @@
 
             <Button
                 android:id="@+id/button"
-                android:layout_width="230dp"
-                android:layout_height="50dp"
+                android:layout_width="220dp"
+                android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="start" />
+                android:text="sta" />
 
             <EditText
                 android:id="@+id/ip"
-                android:layout_width="300dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
@@ -34,21 +34,28 @@
 
             <EditText
                 android:id="@+id/xCapLen"
-                android:layout_width="wrap_content"
+                android:layout_width="220dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
-                android:inputType="textPersonName"
+                android:inputType="numberSigned|number|numberDecimal"
                 android:text="1366" />
 
             <EditText
                 android:id="@+id/yCapLen"
-                android:layout_width="wrap_content"
+                android:layout_width="220dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
-                android:inputType="textPersonName"
+                android:inputType="numberSigned|number|numberDecimal"
                 android:text="768" />
+
+            <Button
+                android:id="@+id/btn_cha"
+                android:layout_width="210dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="sp" />
 
         </LinearLayout>
 

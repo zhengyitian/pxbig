@@ -26,15 +26,18 @@ import java.nio.channels.SocketChannel
 //samsung c5 1000
 //huaweip20 1000
 //redmi 3s 700
-
+//redmi 8a 700
 
 var maxX = 700
 var maxY = 700
 
 //picture maxSize got from server
 var showLen = 700
+
+
 //end of config
 
+var g_spli = 255
 var xs = 0
 var ys = 0
 var xlen = 100
@@ -201,6 +204,16 @@ class thrC : Thread() {
             redCount = v
         var gap = reso / 3 * ty;
 
+        var g30zi = 255
+        var g30bei = 0
+        if (g_spli >= 0 && g_spli <= 255) {
+            g30zi = ((255.0 * v / 300) + (1 - v / 300.0) * g_spli).toInt()
+            if (g30zi - g_spli >= 0)
+                g30bei = g30zi - g_spli
+            else
+                g30bei = ((255 - g_spli) * v / 300.0).toInt()
+        }
+
         if (reso == 30 && drawInfo.contains(redCount)) {
             var di = i * reso + gap;
             var dy = j * reso;
@@ -208,12 +221,13 @@ class thrC : Thread() {
                 for (jj in j * reso until (j + 1) * reso) {
                     var va = (ii + jj * xll) * 4
                     br[va + 3] = -1
+                    br[va + ty] = g30bei.toByte()
                 }
             }
             for (p in drawInfo[redCount]!!) {
                 var va = ((di + p.x) + (dy + p.y) * xll) * 4
                 br[va + 3] = -1
-                br[va + ty] = -1
+                br[va + ty] = g30zi.toByte()
             }
             return;
         }
@@ -224,10 +238,14 @@ class thrC : Thread() {
                 var va = (ii + jj * xll) * 4
                 br[va + 3] = -1
                 if (redCo >= redCount) {
-                    continue
+                    if (reso == 30)
+                        br[va + ty] = g30bei.toByte()
+                } else {
+                    redCo += 1;
+                    br[va + ty] = -1
+                    if (reso == 30)
+                        br[va + ty] = g30zi.toByte()
                 }
-                br[va + ty] = -1
-                redCo += 1;
             }
         }
     }
@@ -323,7 +341,6 @@ class thrC : Thread() {
             ret.reso = reso
             ret.x = xs2
             ret.y = ys2
-
 
             if (reso != 0) {
                 var bb = draw(ss, xl, yl, ret)
@@ -684,6 +701,9 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
+        findViewById<Button>(R.id.btn_cha).setOnClickListener {
+            g_spli = findViewById<EditText>(R.id.xCapLen).text.toString().toInt()
+        }
         findViewById<Button>(R.id.button).setOnClickListener {
             if (hasStart) {
                 System.exit(0)
@@ -694,7 +714,7 @@ class MainActivity : AppCompatActivity() {
             }
             xCapLen = findViewById<EditText>(R.id.xCapLen).text.toString().toInt()
             yCapLen = findViewById<EditText>(R.id.yCapLen).text.toString().toInt()
-            findViewById<Button>(R.id.button).setText("stop")
+            findViewById<Button>(R.id.button).setText("sto")
             hasStart = true
             var t = thrC()
             t.ip = findViewById<EditText>(R.id.ip).text.toString()
