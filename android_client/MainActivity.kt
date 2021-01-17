@@ -206,7 +206,16 @@ class thrC : Thread() {
 
         var g30zi = 255
         var g30bei = 0
+        var gzi = 255
+        var gbei = 0
+
         if (g_spli >= 0 && g_spli <= 255) {
+            gbei = v
+            if (v+ g_spli<255)
+                gzi = v+ g_spli
+            else
+                gzi = 255
+
             g30zi = ((255.0 * v / 300) + (1 - v / 300.0) * g_spli).toInt()
             if (g30zi - g_spli >= 0)
                 g30bei = g30zi - g_spli
@@ -240,11 +249,15 @@ class thrC : Thread() {
                 if (redCo >= redCount) {
                     if (reso == 30)
                         br[va + ty] = g30bei.toByte()
+                    else
+                        br[va + ty] = gbei.toByte()
                 } else {
                     redCo += 1;
-                    br[va + ty] = -1
+
                     if (reso == 30)
                         br[va + ty] = g30zi.toByte()
+                    else
+                        br[va + ty] = gzi.toByte()
                 }
             }
         }
