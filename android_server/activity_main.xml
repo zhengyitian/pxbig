@@ -30,14 +30,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="startin" />
+                android:text="in" />
 
             <Button
                 android:id="@+id/startoutBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="startout" />
+                android:text="out" />
 
             <Button
                 android:id="@+id/stopBtn"

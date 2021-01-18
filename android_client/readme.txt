@@ -1,4 +1,4 @@
-﻿填写 服务端ip 服务端可最大截屏大小（宽、高）  sp button set 宽 to contrast level. when the reso is 10,it will be in effect.
+﻿填写 服务端ip 服务端可最大截屏大小（宽、高）  sp button set 宽 to contrast level. set 高 to sleep time.
 第一个滚动条 横向显示位置
 第二个滚动条 纵向显示位置
 第三个滚动条 显示大小

@@ -35,12 +35,14 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
+import java.util.zip.Deflater
+import java.util.zip.Inflater
 import kotlin.collections.ArrayList
 import kotlin.experimental.and
 
 //config before compile
 //full_version with screen captrued and internal sound record(needs android 10),otherwise only external sound record.
-var full_version = true
+var full_version = false
 
 //screen size to capture
 //huawei p20 2244 2244
@@ -500,7 +502,7 @@ class thr : Thread() {
 
                 if (rr == 16) {
                     jj.flip()
-                    jj.order(ByteOrder.nativeOrder())
+                    jj.order(ByteOrder.LITTLE_ENDIAN)
                     var xbegin = jj.getInt()
                     var ybegin = jj.getInt()
                     var xlen = jj.getInt()
@@ -521,6 +523,32 @@ class thr : Thread() {
                         )
                     }
                     bb.flip()
+                    var tb = bb.array()
+                    var t1 = System.currentTimeMillis()
+                    var f = Deflater()
+                    f.setInput(tb)
+                    f.finish()
+                    var tt = ByteArray(tb.size)
+                    var re = f.deflate(tt)
+                    println("${System.currentTimeMillis()-t1} ${tb.size} ${re}")
+                    if(f.finished())
+                    {
+                        bb = ByteBuffer.allocate(5+re)
+                        bb.order(ByteOrder.BIG_ENDIAN)
+                        bb.put(1)
+                        bb.putInt(re)
+                        bb.put(tt.slice(0 until re).toByteArray())
+                        bb.flip()
+                    }
+
+                    else
+                    {
+                        bb = ByteBuffer.allocate(1+tb.size)
+                        bb.put(0)
+                        bb.put(tb)
+                        bb.flip()
+                    }
+
                     var si = bb.array().size
                     var co = 0
                     cli.configureBlocking(false)
@@ -1043,4 +1071,5 @@ class MainActivity : AppCompatActivity() {
     }
 
 }
+
 
