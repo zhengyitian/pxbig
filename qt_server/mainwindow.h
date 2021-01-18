@@ -12,6 +12,7 @@
 #include "qtcpserver.h"
 #include "qguiapplication.h"
 #include "zlib.h"
+#include "QtEndian"
 
 class MainWindow : public QWidget
 {
@@ -71,8 +72,13 @@ public slots:
         if (re.size()<d.size())
         {
             socket->write("\x01",1);
-            socket->write(re.data(),re.size());
+            quint32 ll = re.size()-4;
+            unsigned char cc[4];
+            qToBigEndian(ll,cc);
+            socket->write((const char*)cc,4);
+            socket->write(re.data()+4,re.size()-4);
         }
+
         else {
             socket->write("\x00",1);
             socket->write(d.data(),d.size());

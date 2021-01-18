@@ -22,6 +22,7 @@
 #include "qmutex.h"
 #include "qthread.h"
 #include "qdatetime.h"
+#include "QtEndian"
 
 class para
 {
@@ -140,9 +141,15 @@ public:
 
         s->deleteLater();
 
+        QByteArray qq;
+        quint32 ii = te.xl*te.yl*4;
+        char cc[4];
+        qToBigEndian(ii,cc);
+        qq.append(cc,4);
+        qq.append(a.data()+4,a.size()-4);
         if(ty==1)
         {
-            a = qUncompress(a);
+            a = qUncompress(qq);
         }
 
         if(a.size()!=te.xl*te.yl*4)
