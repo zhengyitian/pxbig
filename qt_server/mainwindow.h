@@ -11,6 +11,7 @@
 #include "QtNetwork/qtcpsocket.h"
 #include "qtcpserver.h"
 #include "qguiapplication.h"
+#include "zlib.h"
 
 class MainWindow : public QWidget
 {
@@ -43,6 +44,7 @@ public slots:
             socket = nullptr;
             return;
         }
+
         int xs,ys,xl,yl;
         memcpy((char*)&xs,a.data(),4);
         memcpy((char*)&ys,a.data()+4,4);
@@ -62,9 +64,23 @@ public slots:
                 d.push_back(88);
             }
         }
-        socket->write(d.data(),d.size());
-
         auto t1 = QDateTime::currentMSecsSinceEpoch();
+        auto re = qCompress(d);
+        qDebug()<<d.size()<<re.size()<<QDateTime::currentMSecsSinceEpoch()-t1;
+
+        if (re.size()<d.size())
+        {
+            socket->write("\x01",1);
+            socket->write(re.data(),re.size());
+        }
+        else {
+            socket->write("\x00",1);
+            socket->write(d.data(),d.size());
+        }
+
+
+
+        //   auto t1 = QDateTime::currentMSecsSinceEpoch();
         while (QDateTime::currentMSecsSinceEpoch()-t1<10*1000) {
             socket->waitForBytesWritten(1000);
             auto ww =  socket->bytesToWrite();

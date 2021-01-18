@@ -92,7 +92,7 @@ public:
 
     void w()
     {
-      g_lock.lock();
+        g_lock.lock();
         auto te = g_para;
         g_lock.unlock();
         if(te.xl==0||te.yl==0)
@@ -101,6 +101,7 @@ public:
             return;
         }
         co++;
+        //   qDebug()<<"co"<<co;
         QTcpSocket* s = new QTcpSocket();
         s->connectToHost(g_ip,8899);
         auto xx =    s->waitForConnected(1000);
@@ -119,16 +120,37 @@ public:
         a.append((char*)&te.yl,4);
         s->write(a.data(),a.size());
         s->waitForBytesWritten();
-
         a.clear();
+
+        bool hasIni = false;
+        int ty = 0;
         while (1) {
             s->waitForReadyRead();
             auto x = s->readAll();
             if(x.size()==0)break;
+
+            if(!hasIni)
+            {
+                ty=x[0];
+                x = x.right(x.size()-1);
+                hasIni = true;
+            }
             a.append(x);
         }
+
         s->deleteLater();
-        if(a.size()!=te.xl*te.yl*4)return;
+
+        if(ty==1)
+        {
+            a = qUncompress(a);
+        }
+
+        if(a.size()!=te.xl*te.yl*4)
+        {
+            //  qDebug()<<"not equ"<<a.size()<<te.xl*te.yl*4;
+            return;
+        }
+
         g_lock.lock();
         g_buf.buf = a;
         g_buf.xs = te.xs;

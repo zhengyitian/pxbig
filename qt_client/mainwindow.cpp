@@ -29,9 +29,9 @@ void MainWindow::iniUI()
     connect(pauseBtn, SIGNAL(clicked()), this, SLOT(OnP()));
     h->addWidget(pauseBtn);
     la = new QLabel();
-              h->addWidget(la);
-              rgbla = new QLabel();
-                        h->addWidget(rgbla);
+    h->addWidget(la);
+    rgbla = new QLabel();
+    h->addWidget(rgbla);
     v->addLayout(h);
     v->addStretch();
     this->setLayout(v);
@@ -78,8 +78,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
 
         else if(keyEvent->key()==68)
             l1->setText(QString::number(l1->text().toInt()+10));
- else if(keyEvent->key()==32)
-    {
+        else if(keyEvent->key()==32)
+        {
             OnP();
             e->accept();
             return true;
