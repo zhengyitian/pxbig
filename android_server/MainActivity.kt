@@ -42,7 +42,7 @@ import kotlin.experimental.and
 
 //config before compile
 //full_version with screen captrued and internal sound record(needs android 10),otherwise only external sound record.
-var full_version = false
+var full_version = true
 
 //screen size to capture
 //huawei p20 2244 2244
@@ -183,38 +183,152 @@ class thr4 : Thread() {
     }
 }
 
-var backLock = ReentrantLock()
-var backA = LinkedList<ByteArray>()
 
-class backT(var BufferElements2Rec: Int, var recorder: AudioRecord) : Thread() {
-    var stop = false
+class backT(var BufferElements2Rec: Int, var recorder: AudioRecord, var port: Int) : Thread() {
     var soundData = ShortArray(BufferElements2Rec)
 
     override fun run() {
+        var s = SocketChannel.open()
+        var add = InetSocketAddress("127.0.0.1", port)
+        s.connect(add)
         while (true) {
-            if (stop) {
-                recorder.stop()
-                recorder.release()
-                return
+            try {
+                recorder.read(soundData, 0, BufferElements2Rec)
+                var d = util.short2byte(soundData)
+                var b = ByteBuffer.wrap(d)
+                var xx = s.write(b)
+            } catch (e: Exception) {
+                break
             }
-
-            recorder.read(soundData, 0, BufferElements2Rec)
-            var d = util.short2byte(soundData)
-            backLock.lock()
-            backA.add(d)
-            backLock.unlock()
         }
+        s.close()
+        recorder.stop()
+        recorder.release()
     }
 }
 
+
 class thrSoundStream : Thread() {
     lateinit var recorder: AudioRecord
-    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
-    var BytesPerElement = 2; // 2 bytes in 16bit format
+    var BufferElements2Rec = 1024;
+    var BytesPerElement = 2;
     var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
     var RECORDER_SAMPLERATE = 44100
     lateinit var cli: SocketChannel
     lateinit var backThr: backT
+
+
+    fun serverOne(cli: SocketChannel) {
+        var jj = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
+        cli.read(jj)
+        jj.flip()
+        var i = jj.getInt()
+        soundMaxLagTime = jj.getInt()
+        println("i S{i} lag ${soundMaxLagTime}")
+        var xx = android.os.Build.VERSION.SDK_INT
+        if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
+                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                    .build();
+            recorder =
+                    AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
+                            AudioFormat.Builder()
+                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                    .setSampleRate(RECORDER_SAMPLERATE)
+                                    .setChannelMask(RECORDER_CHANNELS)
+                                    .build()
+                    )
+                            .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                            .build();
+        } else {
+            recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
+                    .setAudioFormat(
+                            AudioFormat.Builder()
+                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                    .setSampleRate(RECORDER_SAMPLERATE)
+                                    .setChannelMask(RECORDER_CHANNELS)
+                                    .build()
+                    )
+                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .build();
+        }
+        var s2 = ServerSocketChannel.open()
+        var add2 = InetSocketAddress("0.0.0.0", 0)
+        s2.bind(add2)
+        var ii = s2.localAddress as InetSocketAddress
+        backThr = backT(BufferElements2Rec, recorder, ii.port)
+        backThr.isDaemon = true
+        backThr.start()
+        recorder.startRecording();
+        var cli2 = s2.accept()
+        s2.close()
+        cli.configureBlocking(false)
+        cli2.configureBlocking(false)
+        var l = LinkedList<ByteArray>()
+
+        try {
+            while (true) {
+                doone(cli,cli2,l)
+            }
+        } catch (e: Exception) {
+        }
+        cli2.close()
+    }
+
+    fun doone(cli:SocketChannel,cli2:SocketChannel,l:LinkedList<ByteArray>) {
+        var se = Selector.open()
+        if (l.isNotEmpty()) {
+            cli.register(se, SelectionKey.OP_WRITE)
+        }
+        cli2.register(se, SelectionKey.OP_READ)
+
+        var re = se.select(1000)
+
+        var hasr = false
+        var hasw = false
+
+        for (k in se.selectedKeys()) {
+            if (k.channel() == cli)
+                hasw = true
+            if (k.channel() == cli2)
+                hasr = true
+        }
+        se.close()
+
+        if (hasr)
+        {
+            while (true)
+            {
+                var bb = ByteBuffer.allocate(65536)
+                var r = cli2.read(bb)
+                if (r==0)
+                    break
+                bb.flip()
+                var jj = bb.remaining()
+                var b = ByteArray(jj)
+                bb.get(b)
+                l.add(b)
+            }
+        }
+
+        if(hasw)
+        {
+            while (l.isNotEmpty())
+            {
+                var one = l.pop()
+                var b = ByteBuffer.wrap(one)
+                var x = cli.write(b)
+                if (b.remaining()==0)
+                    continue
+                var bb = ByteArray(b.remaining())
+                b.get(bb)
+                l.addFirst(bb)
+                break
+            }
+        }
+    }
 
     override fun run() {
         var ser = ServerSocketChannel.open()
@@ -222,77 +336,13 @@ class thrSoundStream : Thread() {
         ser.bind(add)
 
         while (true) {
+            cli = ser.accept()
             try {
-                cli = ser.accept()
-                var jj = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
-                cli.read(jj)
-                jj.flip()
-                var i = jj.getInt()
-                soundMaxLagTime = jj.getInt()
-                println("i S{i} lag ${soundMaxLagTime}")
-
-                var xx = android.os.Build.VERSION.SDK_INT
-                if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
-                            .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                            .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                            .build();
-                    recorder =
-                            AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
-                                    AudioFormat.Builder()
-                                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                            .setSampleRate(RECORDER_SAMPLERATE)
-                                            .setChannelMask(RECORDER_CHANNELS)
-                                            .build()
-                            )
-                                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
-                                    .build();
-                } else {
-                    recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
-                            .setAudioFormat(
-                                    AudioFormat.Builder()
-                                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                            .setSampleRate(RECORDER_SAMPLERATE)
-                                            .setChannelMask(RECORDER_CHANNELS)
-                                            .build()
-                            )
-                            .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
-                            .build();
-                }
-                recorder.startRecording();
-                backThr = backT(BufferElements2Rec, recorder)
-                backA.clear()
-                backThr.start()
-                var lagSize = RECORDER_SAMPLERATE * soundMaxLagTime / BufferElements2Rec
-                while (true) {
-                    backLock.lock()
-                    if (backA.isEmpty()) {
-                        backLock.unlock()
-                        Thread.sleep(10)
-                        continue
-                    }
-                    if (backA.size > lagSize+1) {
-                        while (backA.size > lagSize/2 + 1) {
-                            backA.pop()
-                        }
-                    }
-                    var ll = ArrayList<ByteArray>()
-
-                    while (backA.isNotEmpty()) {
-                        ll.add(backA.pop())
-                    }
-                    backLock.unlock()
-                    for (d in ll) {
-                        cli.write(ByteBuffer.wrap(d))
-                    }
-                }
-
+                serverOne(cli)
             } catch (e: Exception) {
                 e.printStackTrace()
-                cli.close()
-                backThr.stop = true
             }
+            cli.close()
         }
     }
 }
@@ -530,20 +580,16 @@ class thr : Thread() {
                     f.finish()
                     var tt = ByteArray(tb.size)
                     var re = f.deflate(tt)
-                    println("${System.currentTimeMillis()-t1} ${tb.size} ${re}")
-                    if(f.finished())
-                    {
-                        bb = ByteBuffer.allocate(5+re)
+                    println("${System.currentTimeMillis() - t1} ${tb.size} ${re}")
+                    if (f.finished()) {
+                        bb = ByteBuffer.allocate(5 + re)
                         bb.order(ByteOrder.BIG_ENDIAN)
                         bb.put(1)
                         bb.putInt(re)
                         bb.put(tt.slice(0 until re).toByteArray())
                         bb.flip()
-                    }
-
-                    else
-                    {
-                        bb = ByteBuffer.allocate(1+tb.size)
+                    } else {
+                        bb = ByteBuffer.allocate(1 + tb.size)
                         bb.put(0)
                         bb.put(tb)
                         bb.flip()
