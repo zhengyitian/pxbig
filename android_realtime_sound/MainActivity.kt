@@ -281,10 +281,10 @@ class thr4(var i: Int) : Thread() {
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
 
         var s2 = ServerSocketChannel.open()
-        var add2 = InetSocketAddress("0.0.0.0", 0)
+        var add2 = InetSocketAddress("0.0.0.0", 27788)
         s2.socket().bind(add2)
-        var ii = s2.localAddress as InetSocketAddress
-        var backThr = backT(pp, ii.port)
+      //  var ii = s2.localAddress as InetSocketAddress
+        var backThr = backT(pp, 27788)
         backThr.isDaemon = true
         backThr.start()
         var cli2 = s2.accept()
