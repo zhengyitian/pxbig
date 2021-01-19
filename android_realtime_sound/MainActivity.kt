@@ -15,6 +15,9 @@ import java.lang.Math.abs
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
+import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
@@ -220,48 +223,42 @@ class thr5 : Thread() {
     }
 }
 
-var backLock = ReentrantLock()
-var backA = LinkedList<ShortArray>()
 
-class backT(var pp: pl) : Thread() {
-    var stop = false
-    var lagSize = 44100 * clag / 1024
-    var left = ShortArray(1024)
 
+class backT(var pp: pl,var port:Int) : Thread() {
     override fun run() {
-        Thread.sleep(500)
-        while (true) {
-            if (stop) {
-                pp.close()
-                return
-            }
-            backLock.lock()
-            if (backA.isEmpty()) {
-                backLock.unlock()
-                println("sleep")
-                Thread.sleep(sleepTime.toLong())
-                continue
-            }
-            if (backA.size > lagSize + 1) {
-                while (backA.size > lagSize / 2 + 1) {
-                    println("pop ${backA.size}")
-                    backA.pop()
-                }
-            }
-            var ll = ArrayList<ShortArray>()
-            while (backA.isNotEmpty()) {
-                ll.add(backA.pop())
-            }
-            backLock.unlock()
+        var s = SocketChannel.open()
+        var add = InetSocketAddress("127.0.0.1", port)
+        s.connect(add)
+        var b = ByteBuffer.allocate(2048).order(ByteOrder.LITTLE_ENDIAN)
+        s.configureBlocking(false)
 
-            for (d in ll) {
-                left = left + d
-                while (left.size >= 1024) {
-                    pp.inData(left.slice(0 until 1024).toShortArray())
-                    left = left.slice(1024 until left.size).toShortArray()
+        while (true) {
+            try {
+                var re = s.read(b)
+                if(re<0)
+                    break
+                if(re==0)
+                {
+                    Thread.sleep(sleepTime.toLong())
                 }
+
+                if (b.position() != 2048)
+                    continue
+                b.flip()
+                var bb = ShortArray(1024)
+                for (i in 0 until 1024)
+                    bb[i] = b.getShort()
+                pp.inData(bb)
+                b.clear()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                break
             }
         }
+        println("backT over")
+        s.close()
+        pp.close()
     }
 }
 
@@ -282,30 +279,83 @@ class thr4(var i: Int) : Thread() {
         bf.flip()
         so.write(bf)
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
-        var b = ByteBuffer.allocate(204800).order(ByteOrder.LITTLE_ENDIAN)
-        backA.clear()
 
-        var backThr = backT(pp)
+        var s2 = ServerSocketChannel.open()
+        var add2 = InetSocketAddress("0.0.0.0", 0)
+        s2.socket().bind(add2)
+        var ii = s2.localAddress as InetSocketAddress
+        var backThr = backT(pp, ii.port)
+        backThr.isDaemon = true
         backThr.start()
-
-        while (!g_stop) {
-            while (b.position() == 0 || b.position() % 2 != 0) {
-                so.read(b)
+        var cli2 = s2.accept()
+        s2.close()
+        so.configureBlocking(false)
+        cli2.configureBlocking(false)
+        var l = LinkedList<ByteArray>()
+        try {
+            while (!g_stop) {
+                doone(cli2,so,l)
             }
-            var po = b.position()
-            b.flip()
-            var d = ShortArray(po / 2)
-            for (i in 0 until po / 2) {
-                d[i] = b.getShort()
-            }
-            b.clear()
-            backLock.lock()
-            backA.add(d)
-            backLock.unlock()
+        } catch (e: Exception) {
         }
         so.close()
-        backThr.stop = true
+        cli2.close()
     }
+    fun doone(cli:SocketChannel,cli2:SocketChannel,l:LinkedList<ByteArray>) {
+        var se = Selector.open()
+        if (l.isNotEmpty()) {
+            cli.register(se, SelectionKey.OP_WRITE)
+        }
+        cli2.register(se, SelectionKey.OP_READ)
+
+        var re = se.select(1000)
+
+        var hasr = false
+        var hasw = false
+
+        for (k in se.selectedKeys()) {
+            if (k.channel() == cli)
+                hasw = true
+            if (k.channel() == cli2)
+                hasr = true
+        }
+        se.close()
+
+        if (hasr)
+        {
+            while (true)
+            {
+                var bb = ByteBuffer.allocate(65536)
+                var r = cli2.read(bb)
+                if (r==0)
+                    break
+                if(r==-1)
+                    return
+                bb.flip()
+                var jj = bb.remaining()
+                var b = ByteArray(jj)
+                bb.get(b)
+                l.add(b)
+            }
+        }
+
+        if(hasw)
+        {
+            while (l.isNotEmpty())
+            {
+                var one = l.pop()
+                var b = ByteBuffer.wrap(one)
+                var x = cli.write(b)
+                if (b.remaining()==0)
+                    continue
+                var bb = ByteArray(b.remaining())
+                b.get(bb)
+                l.addFirst(bb)
+                break
+            }
+        }
+    }
+
 }
 
 var orimode = 0

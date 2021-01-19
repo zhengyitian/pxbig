@@ -101,7 +101,7 @@
                 android:ems="10"
                 android:layout_weight="1"
                 android:inputType="numberSigned|number|numberDecimal"
-                android:text="1000" />
+                android:text="500" />
 
         </LinearLayout>
 
