@@ -565,8 +565,7 @@ class thr : Thread() {
                         var startPos = xbegin + j * con_width
                         var endPos = xbegin + j * con_width + xlen
                         bb.put(
-                            uncompressedBuffer.array().slice(startPos * 4 until endPos * 4)
-                                .toByteArray()
+                            uncompressedBuffer.array().sliceArray(startPos * 4 until endPos * 4)
                         )
                     }
                     bb.flip()
@@ -583,7 +582,7 @@ class thr : Thread() {
                         bb.order(ByteOrder.BIG_ENDIAN)
                         bb.put(1)
                         bb.putInt(re)
-                        bb.put(tt.slice(0 until re).toByteArray())
+                        bb.put(tt.sliceArray(0 until re))
                         bb.flip()
                     } else {
                         bb = ByteBuffer.allocate(1 + tb.size)
@@ -741,7 +740,7 @@ class MainActivity : AppCompatActivity() {
 
     fun doPlay(j: Float) {
         var dataLen2 = dataLen
-        var soundData2 = soundData.slice(0 until dataLen).toShortArray()
+        var soundData2 = soundData.sliceArray(0 until dataLen)
         var co = (j * dataLen2).toInt()
         var writeLen = 1024
         while (true) {
@@ -751,7 +750,7 @@ class MainActivity : AppCompatActivity() {
             }
             if (co + writeLen > dataLen2)
                 break
-            var bb = soundData2.slice(co until co + writeLen).toShortArray()
+            var bb = soundData2.sliceArray(co until co + writeLen)
             var d = util.short2byte(bb)
             audio.write(d, 0, writeLen * 2)
             co += writeLen

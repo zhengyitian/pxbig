@@ -161,7 +161,7 @@ class pl(
             }
             fillData(soundData)
             if (oriPos >= aheadLen && playPos < totalLen) {
-                var dd = buf.slice(playPos until playPos + writeL).toShortArray()
+                var dd = buf.sliceArray(playPos until playPos + writeL)
                 playPos += writeL
                 audio.write(util.short2byte(dd), 0, writeL * 2)
             }
@@ -173,7 +173,7 @@ class pl(
             if (oriPos < totalLen) {
                 fillData(soundData)
             }
-            var dd = buf.slice(playPos until playPos + writeL).toShortArray()
+            var dd = buf.sliceArray(playPos until playPos + writeL)
             playPos += writeL
             audio.write(util.short2byte(dd), 0, writeL * 2)
         }
@@ -223,7 +223,7 @@ class thr5 : Thread() {
     }
 }
 
-
+var coo = AtomicInteger(0)
 
 class backT(var pp: pl,var port:Int) : Thread() {
     override fun run() {
@@ -242,6 +242,8 @@ class backT(var pp: pl,var port:Int) : Thread() {
                 {
                     Thread.sleep(sleepTime.toLong())
                 }
+             coo.getAndAdd(re*-1)
+
 
                 if (b.position() != 2048)
                     continue
@@ -268,8 +270,12 @@ class thr4(var i: Int) : Thread() {
     var jia = 0.0
     var kuai = 1.0
     var onePieceTime = 6.0
+    var lagSize = 0
+    var maxLag = clag*44100*4
+
 
     override fun run() {
+        coo.set(0)
         var so = SocketChannel.open()
         var add = InetSocketAddress(ip, 18799)
         so.connect(add)
@@ -303,12 +309,12 @@ class thr4(var i: Int) : Thread() {
     }
     fun doone(cli:SocketChannel,cli2:SocketChannel,l:LinkedList<ByteArray>) {
         var se = Selector.open()
-        if (l.isNotEmpty()) {
+        if (l.isNotEmpty() && coo.get()<50000) {
             cli.register(se, SelectionKey.OP_WRITE)
         }
         cli2.register(se, SelectionKey.OP_READ)
 
-        var re = se.select(1000)
+        var re = se.select(100)
 
         var hasr = false
         var hasw = false
@@ -330,22 +336,50 @@ class thr4(var i: Int) : Thread() {
                 if (r==0)
                     break
                 if(r==-1)
+                {
+                    Thread.sleep(10)
                     return
+                }
+
+                lagSize += r
                 bb.flip()
                 var jj = bb.remaining()
                 var b = ByteArray(jj)
                 bb.get(b)
                 l.add(b)
             }
+            if(lagSize>0.5*44100*4+maxLag)
+            {
+                var co = 0
+                while (lagSize>maxLag)
+                {
+                    var one = l.pop()
+                    if (lagSize-one.size>maxLag)
+                    {
+                        lagSize -= one.size
+                        co += one.size
+                        continue
+                    }
+                    var si = lagSize - maxLag
+                    if((co+si)%2!=0)
+                        si -= 1
+                    var bb = one.sliceArray(si until  one.size)
+                    l.addFirst(bb)
+                    lagSize -= si
+                    break
+                }
+            }
         }
 
         if(hasw)
         {
-            while (l.isNotEmpty())
+            while (l.isNotEmpty() && coo.get()<50000)
             {
                 var one = l.pop()
                 var b = ByteBuffer.wrap(one)
                 var x = cli.write(b)
+                lagSize -= x
+                coo.getAndAdd(x)
                 if (b.remaining()==0)
                     continue
                 var bb = ByteArray(b.remaining())
