@@ -173,7 +173,7 @@ class checkThr : Thread() {
     override fun run() {
         while (true) {
             Thread.sleep(1000)
-            if (System.currentTimeMillis() - lastShowTime.get() > 1000 * 60 * 1) {
+            if (System.currentTimeMillis() - lastShowTime.get() > 1000 * 60 * 30) {
                 System.exit(0)
             }
         }
