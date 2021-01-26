@@ -92,11 +92,7 @@ class pl(
         buf = ShortArray(totalLen.toInt() + 1024 * 1024)
         writeL = (kuai * playSize * con_splitSIze).toInt()
 
-        var buffersize = 0
-        if (outFormat == AudioFormat.CHANNEL_OUT_MONO)
-            buffersize = playSize * 2 * kuai.toInt() * con_splitSIze
-        else
-            buffersize = playSize * 4 * kuai.toInt() * con_splitSIze
+        var buffersize = playSize * 2 * kuai.toInt() * con_splitSIze
         var minsize = AudioTrack.getMinBufferSize(
             (playFre).toInt(),
             outFormat,
@@ -175,7 +171,8 @@ class pl(
             if (oriPos >= aheadLen && playPos < totalLen) {
                 var dd = buf.sliceArray(playPos until playPos + writeL)
                 playPos += writeL
-                audio.write(util.short2byte(dd), 0, writeL * 2)
+                var re = audio.write(util.short2byte(dd), 0, writeL * 2)
+
             }
         } else {
             if (playPos > totalLen) {
@@ -187,7 +184,8 @@ class pl(
             }
             var dd = buf.sliceArray(playPos until playPos + writeL)
             playPos += writeL
-            audio.write(util.short2byte(dd), 0, writeL * 2)
+            var re = audio.write(util.short2byte(dd), 0, writeL * 2)
+
         }
     }
 
@@ -226,7 +224,8 @@ class thr5 : Thread() {
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
         var soundData = ShortArray(recordSize)
         while (!g_stop) {
-            recorder.read(soundData, 0, recordSize)
+            var re = recorder.read(soundData, 0, recordSize)
+
             pp.inData(soundData)
         }
         pp.close()
@@ -244,7 +243,7 @@ class backT(var pp: pl, var port: Int) : Thread() {
         s.connect(add)
         var b = ByteBuffer.allocate(playSize * 2).order(ByteOrder.LITTLE_ENDIAN)
         s.configureBlocking(false)
-
+        Thread.sleep(300)
         while (true) {
             try {
                 var re = s.read(b)
@@ -255,14 +254,15 @@ class backT(var pp: pl, var port: Int) : Thread() {
                 }
                 coo.getAndAdd(re * -1)
 
-
                 if (b.position() != playSize * 2)
                     continue
                 b.flip()
                 var bb = ShortArray(playSize)
                 for (i in 0 until playSize)
                     bb[i] = b.getShort()
+                var t1 = System.currentTimeMillis()
                 pp.inData(bb)
+
                 b.clear()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -326,7 +326,7 @@ class thr4(var i: Int) : Thread() {
         }
         cli2.register(se, SelectionKey.OP_READ)
 
-        var re = se.select(100)
+        var re = se.select(1)
 
         var hasr = false
         var hasw = false
