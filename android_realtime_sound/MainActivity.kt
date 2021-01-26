@@ -23,8 +23,8 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 
-var recordSize = 1024*10
-var playSize = 1024*10
+var recordSize = 1024 * 10
+var playSize = 1024 * 10
 var slag = 0
 var clag = 0
 var sleepTime = 0
@@ -92,21 +92,36 @@ class pl(
         buf = ShortArray(totalLen.toInt() + 1024 * 1024)
         writeL = (kuai * playSize * con_splitSIze).toInt()
 
+        var buffersize = 0
+        if (outFormat == AudioFormat.CHANNEL_OUT_MONO)
+            buffersize = playSize * 2 * kuai.toInt() * con_splitSIze
+        else
+            buffersize = playSize * 4 * kuai.toInt() * con_splitSIze
+        var minsize = AudioTrack.getMinBufferSize(
+            (playFre).toInt(),
+            outFormat,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        if (buffersize < minsize)
+            buffersize = minsize
 
         audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
             (playFre).toInt(), //sample rate
             outFormat, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-            playSize*4* kuai.toInt() * con_splitSIze,
+            buffersize,
             AudioTrack.MODE_STREAM
-        );
+        )
+
         audio.play()
     }
 
     fun fillData(soundData: ShortArray) {
+        var si = soundData.size
+
         if (!isSplit) {
-            for (i in 0 until playSize) {
+            for (i in 0 until si) {
                 var ab = abs(soundData[i].toInt()) % 16
                 var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
                 buf[oriPos] = double2short(meanV)
@@ -117,7 +132,7 @@ class pl(
 
 
         if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
-            for (i in 0 until playSize) {
+            for (i in 0 until si) {
                 var ab = abs(soundData[i].toInt()) % 16
                 var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
                 buf[oriPos] = double2short(meanV * d1_cheng + d1_jia)
@@ -128,7 +143,7 @@ class pl(
                 oriPos += 1
             }
         } else {
-            for (i in 0 until playSize) {
+            for (i in 0 until si) {
                 if (i % 2 != 0) continue
                 var ab = abs(soundData[i].toInt()) % 16
                 var mean1 = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
@@ -205,7 +220,7 @@ class thr5 : Thread() {
                     .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                     .build()
             )
-            .setBufferSizeInBytes(recordSize*4)
+            .setBufferSizeInBytes(recordSize * 2)
             .build();
         recorder.startRecording();
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
@@ -222,27 +237,26 @@ class thr5 : Thread() {
 
 var coo = AtomicInteger(0)
 
-class backT(var pp: pl,var port:Int) : Thread() {
+class backT(var pp: pl, var port: Int) : Thread() {
     override fun run() {
         var s = SocketChannel.open()
         var add = InetSocketAddress("127.0.0.1", port)
         s.connect(add)
-        var b = ByteBuffer.allocate(playSize*2).order(ByteOrder.LITTLE_ENDIAN)
+        var b = ByteBuffer.allocate(playSize * 2).order(ByteOrder.LITTLE_ENDIAN)
         s.configureBlocking(false)
 
         while (true) {
             try {
                 var re = s.read(b)
-                if(re<0)
+                if (re < 0)
                     break
-                if(re==0)
-                {
+                if (re == 0) {
                     Thread.sleep(sleepTime.toLong())
                 }
-             coo.getAndAdd(re*-1)
+                coo.getAndAdd(re * -1)
 
 
-                if (b.position() != playSize*2)
+                if (b.position() != playSize * 2)
                     continue
                 b.flip()
                 var bb = ShortArray(playSize)
@@ -268,7 +282,7 @@ class thr4(var i: Int) : Thread() {
     var kuai = 1.0
     var onePieceTime = 6.0
     var lagSize = 0
-    var maxLag = clag*44100*4
+    var maxLag = clag * 44100 * 4
 
 
     override fun run() {
@@ -286,7 +300,7 @@ class thr4(var i: Int) : Thread() {
         var s2 = ServerSocketChannel.open()
         var add2 = InetSocketAddress("0.0.0.0", 27788)
         s2.socket().bind(add2)
-      //  var ii = s2.localAddress as InetSocketAddress
+        //  var ii = s2.localAddress as InetSocketAddress
         var backThr = backT(pp, 27788)
         backThr.isDaemon = true
         backThr.start()
@@ -297,16 +311,17 @@ class thr4(var i: Int) : Thread() {
         var l = LinkedList<ByteArray>()
         try {
             while (!g_stop) {
-                doone(cli2,so,l)
+                doone(cli2, so, l)
             }
         } catch (e: Exception) {
         }
         so.close()
         cli2.close()
     }
-    fun doone(cli:SocketChannel,cli2:SocketChannel,l:LinkedList<ByteArray>) {
+
+    fun doone(cli: SocketChannel, cli2: SocketChannel, l: LinkedList<ByteArray>) {
         var se = Selector.open()
-        if (l.isNotEmpty() && coo.get()<50000) {
+        if (l.isNotEmpty() && coo.get() < 50000) {
             cli.register(se, SelectionKey.OP_WRITE)
         }
         cli2.register(se, SelectionKey.OP_READ)
@@ -324,16 +339,13 @@ class thr4(var i: Int) : Thread() {
         }
         se.close()
 
-        if (hasr)
-        {
-            while (true)
-            {
+        if (hasr) {
+            while (true) {
                 var bb = ByteBuffer.allocate(65536)
                 var r = cli2.read(bb)
-                if (r==0)
+                if (r == 0)
                     break
-                if(r==-1)
-                {
+                if (r == -1) {
                     Thread.sleep(10)
                     return
                 }
@@ -345,22 +357,19 @@ class thr4(var i: Int) : Thread() {
                 bb.get(b)
                 l.add(b)
             }
-            if(lagSize>0.5*44100*4+maxLag)
-            {
+            if (lagSize > 0.5 * 44100 * 4 + maxLag) {
                 var co = 0
-                while (lagSize>maxLag)
-                {
+                while (lagSize > maxLag) {
                     var one = l.pop()
-                    if (lagSize-one.size>maxLag)
-                    {
+                    if (lagSize - one.size > maxLag) {
                         lagSize -= one.size
                         co += one.size
                         continue
                     }
                     var si = lagSize - maxLag
-                    if((co+si)%2!=0)
+                    if ((co + si) % 2 != 0)
                         si -= 1
-                    var bb = one.sliceArray(si until  one.size)
+                    var bb = one.sliceArray(si until one.size)
                     l.addFirst(bb)
                     lagSize -= si
                     break
@@ -368,16 +377,14 @@ class thr4(var i: Int) : Thread() {
             }
         }
 
-        if(hasw)
-        {
-            while (l.isNotEmpty() && coo.get()<50000)
-            {
+        if (hasw) {
+            while (l.isNotEmpty() && coo.get() < 50000) {
                 var one = l.pop()
                 var b = ByteBuffer.wrap(one)
                 var x = cli.write(b)
                 lagSize -= x
                 coo.getAndAdd(x)
-                if (b.remaining()==0)
+                if (b.remaining() == 0)
                     continue
                 var bb = ByteArray(b.remaining())
                 b.get(bb)

@@ -52,8 +52,8 @@ var con_height = 1520
 
 //end of config
 
-var recordSize = 1024*10
-var playSize = 1024*10
+var recordSize = 1024 * 10
+var playSize = 1024 * 10
 
 
 class RepeatListener(
@@ -241,7 +241,7 @@ class thrSoundStream : Thread() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                    .setBufferSizeInBytes(recordSize*4)
+                    .setBufferSizeInBytes(recordSize * 4)
                     .build();
         } else {
             recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -252,7 +252,7 @@ class thrSoundStream : Thread() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                .setBufferSizeInBytes(recordSize*4)
+                .setBufferSizeInBytes(recordSize * 4)
                 .build();
         }
 
@@ -260,7 +260,7 @@ class thrSoundStream : Thread() {
         var add2 = InetSocketAddress("0.0.0.0", 0)
         s2.bind(add2)
         var ii = s2.localAddress as InetSocketAddress
-        backThr = backT( recorder, ii.port)
+        backThr = backT(recorder, ii.port)
         backThr.isDaemon = true
         backThr.start()
         recorder.startRecording();
@@ -712,7 +712,7 @@ class MainActivity : AppCompatActivity() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                    .setBufferSizeInBytes(recordSize*4)
+                    .setBufferSizeInBytes(recordSize * 4)
                     .build();
             } else {
                 recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -723,7 +723,7 @@ class MainActivity : AppCompatActivity() {
                             .setChannelMask(RECORDER_CHANNELS)
                             .build()
                     )
-                    .setBufferSizeInBytes(recordSize*4)
+                    .setBufferSizeInBytes(recordSize * 4)
                     .build();
             }
 
@@ -764,13 +764,21 @@ class MainActivity : AppCompatActivity() {
             findViewById<SeekBar>(R.id.seekBar).progress.toFloat() * 3 / findViewById<SeekBar>(R.id.seekBar).max.toFloat()
         i += 0.1.toFloat()
 
+        var minsize = AudioTrack.getMinBufferSize(
+            (44100 * i).toInt(),
+            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        var buffersize = playSize * 4
+        if (buffersize < minsize)
+            buffersize = minsize
 
         audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
             (44100 * i).toInt(), //sample rate
             AudioFormat.CHANNEL_OUT_STEREO, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-            playSize*4,
+            buffersize,
             AudioTrack.MODE_STREAM
         );
         audio.play()
