@@ -47,10 +47,13 @@ var full_version = true
 //screen size to capture
 //huawei p20 2244 2244
 //redmi8a 1520 1520
-var con_width = 2244
-var con_height = 2244
+var con_width = 1520
+var con_height = 1520
 
 //end of config
+
+var recordSize = 1024*10
+var playSize = 1024*10
 
 
 class RepeatListener(
@@ -184,8 +187,8 @@ class thr4 : Thread() {
 }
 
 
-class backT(var BufferElements2Rec: Int, var recorder: AudioRecord, var port: Int) : Thread() {
-    var soundData = ShortArray(BufferElements2Rec)
+class backT(var recorder: AudioRecord, var port: Int) : Thread() {
+    var soundData = ShortArray(recordSize)
 
     override fun run() {
         var s = SocketChannel.open()
@@ -193,7 +196,7 @@ class backT(var BufferElements2Rec: Int, var recorder: AudioRecord, var port: In
         s.connect(add)
         while (true) {
             try {
-                recorder.read(soundData, 0, BufferElements2Rec)
+                recorder.read(soundData, 0, recordSize)
                 var d = util.short2byte(soundData)
                 var b = ByteBuffer.wrap(d)
                 var xx = s.write(b)
@@ -210,8 +213,6 @@ class backT(var BufferElements2Rec: Int, var recorder: AudioRecord, var port: In
 
 class thrSoundStream : Thread() {
     lateinit var recorder: AudioRecord
-    var BufferElements2Rec = 1024;
-    var BytesPerElement = 2;
     var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
     var RECORDER_SAMPLERATE = 44100
     lateinit var cli: SocketChannel
@@ -240,7 +241,7 @@ class thrSoundStream : Thread() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .setBufferSizeInBytes(recordSize*4)
                     .build();
         } else {
             recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -251,7 +252,7 @@ class thrSoundStream : Thread() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                .setBufferSizeInBytes(recordSize*4)
                 .build();
         }
 
@@ -259,7 +260,7 @@ class thrSoundStream : Thread() {
         var add2 = InetSocketAddress("0.0.0.0", 0)
         s2.bind(add2)
         var ii = s2.localAddress as InetSocketAddress
-        backThr = backT(BufferElements2Rec, recorder, ii.port)
+        backThr = backT( recorder, ii.port)
         backThr.isDaemon = true
         backThr.start()
         recorder.startRecording();
@@ -620,9 +621,6 @@ class MainActivity : AppCompatActivity() {
     var RECORDER_SAMPLERATE = 44100;//44.1k
     var RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
     var RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    var BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
-    var BytesPerElement = 2; // 2 bytes in 16bit format
-
     var soundData = ShortArray(1024 * 1024 * 6)
     var dataLen = 0
     lateinit var audio: AudioTrack
@@ -683,8 +681,8 @@ class MainActivity : AppCompatActivity() {
                 hasStop = false
                 break
             }
-            recorder.read(soundData, dataLen, BufferElements2Rec)
-            dataLen += BufferElements2Rec
+            recorder.read(soundData, dataLen, recordSize)
+            dataLen += recordSize
 
             if (dataLen > 1024 * 1024 * 5)
                 break
@@ -714,7 +712,7 @@ class MainActivity : AppCompatActivity() {
                         .setChannelMask(RECORDER_CHANNELS)
                         .build()
                 )
-                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .setBufferSizeInBytes(recordSize*4)
                     .build();
             } else {
                 recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -725,7 +723,7 @@ class MainActivity : AppCompatActivity() {
                             .setChannelMask(RECORDER_CHANNELS)
                             .build()
                     )
-                    .setBufferSizeInBytes(BufferElements2Rec * BytesPerElement)
+                    .setBufferSizeInBytes(recordSize*4)
                     .build();
             }
 
@@ -742,18 +740,17 @@ class MainActivity : AppCompatActivity() {
         var dataLen2 = dataLen
         var soundData2 = soundData.sliceArray(0 until dataLen)
         var co = (j * dataLen2).toInt()
-        var writeLen = 1024
         while (true) {
             if (hasStop) {
                 hasStop = false
                 break
             }
-            if (co + writeLen > dataLen2)
+            if (co + playSize > dataLen2)
                 break
-            var bb = soundData2.sliceArray(co until co + writeLen)
+            var bb = soundData2.sliceArray(co until co + playSize)
             var d = util.short2byte(bb)
-            audio.write(d, 0, writeLen * 2)
-            co += writeLen
+            audio.write(d, 0, playSize * 2)
+            co += playSize
         }
         audio.stop()
         audio.release()
@@ -767,18 +764,13 @@ class MainActivity : AppCompatActivity() {
             findViewById<SeekBar>(R.id.seekBar).progress.toFloat() * 3 / findViewById<SeekBar>(R.id.seekBar).max.toFloat()
         i += 0.1.toFloat()
 
-        var bufsize = AudioTrack.getMinBufferSize(
-            (44100 * i).toInt(),
-            AudioFormat.CHANNEL_OUT_STEREO,
-            AudioFormat.ENCODING_PCM_16BIT
-        );
 
         audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
             (44100 * i).toInt(), //sample rate
             AudioFormat.CHANNEL_OUT_STEREO, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-            bufsize,
+            playSize*4,
             AudioTrack.MODE_STREAM
         );
         audio.play()

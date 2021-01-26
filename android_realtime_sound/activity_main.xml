@@ -83,7 +83,7 @@
                 android:ems="10"
                 android:layout_weight="1"
                 android:inputType="numberSigned|number|numberDecimal"
-                android:text="5" />
+                android:text="3" />
             <EditText
                 android:id="@+id/xxff"
                 android:layout_width="wrap_content"

@@ -23,7 +23,8 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 
-
+var recordSize = 1024*10
+var playSize = 1024*10
 var slag = 0
 var clag = 0
 var sleepTime = 0
@@ -76,7 +77,7 @@ class pl(
     var totalLen = onePieceTime * playFre
     var aheadLen = (playFre - 44100) * onePieceTime
     var buf = ShortArray(0)
-    var writeL = (kuai * 1024).toInt()
+    var writeL = (kuai * playSize).toInt()
     var isSplit = g_split
 
     init {
@@ -89,19 +90,15 @@ class pl(
         totalLen = onePieceTime * playFre
         aheadLen = (playFre - 44100 * con_splitSIze) * onePieceTime
         buf = ShortArray(totalLen.toInt() + 1024 * 1024)
-        writeL = (kuai * 1024 * con_splitSIze).toInt()
+        writeL = (kuai * playSize * con_splitSIze).toInt()
 
-        var bufsize = AudioTrack.getMinBufferSize(
-            (playFre).toInt(),
-            outFormat,
-            AudioFormat.ENCODING_PCM_16BIT
-        );
+
         audio = AudioTrack(
             AudioManager.STREAM_MUSIC,
             (playFre).toInt(), //sample rate
             outFormat, //2 channel
             AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-            bufsize,
+            playSize*4* kuai.toInt() * con_splitSIze,
             AudioTrack.MODE_STREAM
         );
         audio.play()
@@ -109,7 +106,7 @@ class pl(
 
     fun fillData(soundData: ShortArray) {
         if (!isSplit) {
-            for (i in 0..1023) {
+            for (i in 0 until playSize) {
                 var ab = abs(soundData[i].toInt()) % 16
                 var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
                 buf[oriPos] = double2short(meanV)
@@ -120,7 +117,7 @@ class pl(
 
 
         if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
-            for (i in 0..1023) {
+            for (i in 0 until playSize) {
                 var ab = abs(soundData[i].toInt()) % 16
                 var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
                 buf[oriPos] = double2short(meanV * d1_cheng + d1_jia)
@@ -131,7 +128,7 @@ class pl(
                 oriPos += 1
             }
         } else {
-            for (i in 0..1023) {
+            for (i in 0 until playSize) {
                 if (i % 2 != 0) continue
                 var ab = abs(soundData[i].toInt()) % 16
                 var mean1 = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
@@ -208,13 +205,13 @@ class thr5 : Thread() {
                     .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                     .build()
             )
-            .setBufferSizeInBytes(1024 * 2)
+            .setBufferSizeInBytes(recordSize*4)
             .build();
         recorder.startRecording();
         var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
-        var soundData = ShortArray(1024)
+        var soundData = ShortArray(recordSize)
         while (!g_stop) {
-            recorder.read(soundData, 0, 1024)
+            recorder.read(soundData, 0, recordSize)
             pp.inData(soundData)
         }
         pp.close()
@@ -230,7 +227,7 @@ class backT(var pp: pl,var port:Int) : Thread() {
         var s = SocketChannel.open()
         var add = InetSocketAddress("127.0.0.1", port)
         s.connect(add)
-        var b = ByteBuffer.allocate(2048).order(ByteOrder.LITTLE_ENDIAN)
+        var b = ByteBuffer.allocate(playSize*2).order(ByteOrder.LITTLE_ENDIAN)
         s.configureBlocking(false)
 
         while (true) {
@@ -245,11 +242,11 @@ class backT(var pp: pl,var port:Int) : Thread() {
              coo.getAndAdd(re*-1)
 
 
-                if (b.position() != 2048)
+                if (b.position() != playSize*2)
                     continue
                 b.flip()
-                var bb = ShortArray(1024)
-                for (i in 0 until 1024)
+                var bb = ShortArray(playSize)
+                for (i in 0 until playSize)
                     bb[i] = b.getShort()
                 pp.inData(bb)
                 b.clear()
