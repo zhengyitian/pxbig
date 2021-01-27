@@ -162,7 +162,14 @@ class pl(
     }
 
     fun inData(soundData: ShortArray) {
-        if (kuai >= 1) {
+        if(kuai>0.99999 && kuai <1.00001)
+        {
+            oriPos = 0
+            fillData(soundData)
+            var dd = buf.sliceArray(0 until  writeL)
+            audio.write(util.short2byte(dd), 0, writeL * 2)
+        }
+        else if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
                 playPos = 0
@@ -234,36 +241,65 @@ class thr5 : Thread() {
     }
 }
 
-var coo = AtomicInteger(0)
+var cacheCount = AtomicInteger(0)
 
 class backT(var pp: pl, var port: Int) : Thread() {
+    var maxLag = clag * 44100 * 4
+    var onesize = sleepTime * 44100 * 4 / 1000
+    var b = ByteBuffer.allocate(playSize * 2).order(ByteOrder.LITTLE_ENDIAN)
+
+    fun one(s: SocketChannel): Boolean {
+        var co = 0
+        while (co < onesize) {
+            var re = s.read(b)
+            if (re < 0)
+                return false
+
+            cacheCount.getAndAdd(re * -1)
+            co += re
+            if (b.position() != playSize * 2)
+                continue
+            b.flip()
+            var bb = ShortArray(playSize)
+            for (i in 0 until playSize)
+                bb[i] = b.getShort()
+            pp.inData(bb)
+            b.clear()
+        }
+        return true
+    }
+
     override fun run() {
         var s = SocketChannel.open()
         var add = InetSocketAddress("127.0.0.1", port)
         s.connect(add)
-        var b = ByteBuffer.allocate(playSize * 2).order(ByteOrder.LITTLE_ENDIAN)
+
         s.configureBlocking(false)
         Thread.sleep(300)
         while (true) {
             try {
-                var re = s.read(b)
-                if (re < 0)
-                    break
-                if (re == 0) {
+                if (cacheCount.get() > onesize) {
+                    if (!one(s))
+                        break
+                } else {
                     Thread.sleep(sleepTime.toLong())
                 }
-                coo.getAndAdd(re * -1)
 
-                if (b.position() != playSize * 2)
-                    continue
-                b.flip()
-                var bb = ShortArray(playSize)
-                for (i in 0 until playSize)
-                    bb[i] = b.getShort()
-                var t1 = System.currentTimeMillis()
-                pp.inData(bb)
+                if (cacheCount.get() > 0.5 * 44100 * 4 + maxLag) {
+                    var ss = cacheCount.get() - maxLag
+                    if (ss % 2 != 0)
+                        ss -= 1
+                    var bb = ByteBuffer.allocate(ss)
+                    while (true) {
+                        var re = s.read(bb)
+                        if (re < 0)
+                            break
 
-                b.clear()
+                        cacheCount.getAndAdd(re * -1)
+                        if (bb.position() == ss)
+                            break
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 break
@@ -281,12 +317,10 @@ class thr4(var i: Int) : Thread() {
     var jia = 0.0
     var kuai = 1.0
     var onePieceTime = 6.0
-    var lagSize = 0
-    var maxLag = clag * 44100 * 4
 
 
     override fun run() {
-        coo.set(0)
+        cacheCount.set(0)
         var so = SocketChannel.open()
         var add = InetSocketAddress(ip, 18799)
         so.connect(add)
@@ -300,7 +334,6 @@ class thr4(var i: Int) : Thread() {
         var s2 = ServerSocketChannel.open()
         var add2 = InetSocketAddress("0.0.0.0", 27788)
         s2.socket().bind(add2)
-        //  var ii = s2.localAddress as InetSocketAddress
         var backThr = backT(pp, 27788)
         backThr.isDaemon = true
         backThr.start()
@@ -321,12 +354,12 @@ class thr4(var i: Int) : Thread() {
 
     fun doone(cli: SocketChannel, cli2: SocketChannel, l: LinkedList<ByteArray>) {
         var se = Selector.open()
-        if (l.isNotEmpty() && coo.get() < 50000) {
+        if (l.isNotEmpty()) {
             cli.register(se, SelectionKey.OP_WRITE)
         }
         cli2.register(se, SelectionKey.OP_READ)
 
-        var re = se.select(1)
+        var re = se.select(1000)
 
         var hasr = false
         var hasw = false
@@ -350,40 +383,22 @@ class thr4(var i: Int) : Thread() {
                     return
                 }
 
-                lagSize += r
+                cacheCount.getAndAdd(r)
+
                 bb.flip()
                 var jj = bb.remaining()
                 var b = ByteArray(jj)
                 bb.get(b)
                 l.add(b)
             }
-            if (lagSize > 0.5 * 44100 * 4 + maxLag) {
-                var co = 0
-                while (lagSize > maxLag) {
-                    var one = l.pop()
-                    if (lagSize - one.size > maxLag) {
-                        lagSize -= one.size
-                        co += one.size
-                        continue
-                    }
-                    var si = lagSize - maxLag
-                    if ((co + si) % 2 != 0)
-                        si -= 1
-                    var bb = one.sliceArray(si until one.size)
-                    l.addFirst(bb)
-                    lagSize -= si
-                    break
-                }
-            }
+
         }
 
         if (hasw) {
-            while (l.isNotEmpty() && coo.get() < 50000) {
+            while (l.isNotEmpty()) {
                 var one = l.pop()
                 var b = ByteBuffer.wrap(one)
                 var x = cli.write(b)
-                lagSize -= x
-                coo.getAndAdd(x)
                 if (b.remaining() == 0)
                     continue
                 var bb = ByteArray(b.remaining())
@@ -393,7 +408,6 @@ class thr4(var i: Int) : Thread() {
             }
         }
     }
-
 }
 
 var orimode = 0
