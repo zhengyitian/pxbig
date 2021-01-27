@@ -23,8 +23,8 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 
-var recordSize = 1024 * 10
-var playSize = 1024 * 10
+var recordSize = 1024 * 2
+var playSize = 1024 * 2
 var slag = 0
 var clag = 0
 var sleepTime = 0
@@ -162,14 +162,12 @@ class pl(
     }
 
     fun inData(soundData: ShortArray) {
-        if(kuai>0.99999 && kuai <1.00001)
-        {
+        if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            var dd = buf.sliceArray(0 until  writeL)
+            var dd = buf.sliceArray(0 until writeL)
             audio.write(util.short2byte(dd), 0, writeL * 2)
-        }
-        else if (kuai >= 1) {
+        } else if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
                 playPos = 0
@@ -202,7 +200,7 @@ class pl(
     }
 }
 
-class thr5 : Thread() {
+class thr5 ( var upper: MainActivity): Thread() {
     var cheng = 0.0
     var jia = 0.0
     var kuai = 1.0
@@ -232,18 +230,20 @@ class thr5 : Thread() {
         var soundData = ShortArray(recordSize)
         while (!g_stop) {
             var re = recorder.read(soundData, 0, recordSize)
-
             pp.inData(soundData)
         }
         pp.close()
         recorder.stop()
         recorder.release()
+        upper.runOnUiThread {
+            upper.stopback()
+        }
     }
 }
 
 var cacheCount = AtomicInteger(0)
 
-class backT(var pp: pl, var port: Int) : Thread() {
+class backT(var pp: pl, var port: Int, var upper: MainActivity) : Thread() {
     var maxLag = clag * 44100 * 4
     var onesize = sleepTime * 44100 * 4 / 1000
     var b = ByteBuffer.allocate(playSize * 2).order(ByteOrder.LITTLE_ENDIAN)
@@ -275,9 +275,10 @@ class backT(var pp: pl, var port: Int) : Thread() {
         s.connect(add)
 
         s.configureBlocking(false)
-        Thread.sleep(300)
         while (true) {
             try {
+                if (cacheCount.get() < 0)
+                    break
                 if (cacheCount.get() > onesize) {
                     if (!one(s))
                         break
@@ -308,16 +309,18 @@ class backT(var pp: pl, var port: Int) : Thread() {
         println("backT over")
         s.close()
         pp.close()
+        upper.runOnUiThread {
+            upper.stopback()
+        }
     }
 }
 
-class thr4(var i: Int) : Thread() {
+class thr4(var i: Int, var upper: MainActivity) : Thread() {
     var ip = ""
     var cheng = 0.0
     var jia = 0.0
     var kuai = 1.0
     var onePieceTime = 6.0
-
 
     override fun run() {
         cacheCount.set(0)
@@ -334,7 +337,7 @@ class thr4(var i: Int) : Thread() {
         var s2 = ServerSocketChannel.open()
         var add2 = InetSocketAddress("0.0.0.0", 27788)
         s2.socket().bind(add2)
-        var backThr = backT(pp, 27788)
+        var backThr = backT(pp, 27788, upper)
         backThr.isDaemon = true
         backThr.start()
         var cli2 = s2.accept()
@@ -350,6 +353,7 @@ class thr4(var i: Int) : Thread() {
         }
         so.close()
         cli2.close()
+        cacheCount.set(-1)
     }
 
     fun doone(cli: SocketChannel, cli2: SocketChannel, l: LinkedList<ByteArray>) {
@@ -442,6 +446,7 @@ class MainActivity : AppCompatActivity() {
         sleepTime = findViewById<EditText>(R.id.text_sleep).text.toString().toInt()
         findViewById<Button>(R.id.btn_in).isEnabled = false
         findViewById<Button>(R.id.btn_out).isEnabled = false
+        findViewById<Button>(R.id.btn_self).isEnabled = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -476,9 +481,8 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_self).setOnClickListener {
             saveText()
-            g_stop = false
-            findViewById<Button>(R.id.btn_self).isEnabled = false
-            var t = thr5()
+            stFunc()
+            var t = thr5(this)
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
             t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
@@ -510,7 +514,7 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_in).setOnClickListener {
             stFunc()
-            var t = thr4(1)
+            var t = thr4(1, this)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
@@ -520,7 +524,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btn_out).setOnClickListener {
             stFunc()
-            var t = thr4(2)
+            var t = thr4(2, this)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
             t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
             t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
@@ -530,13 +534,17 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btn_stop).setOnClickListener {
             g_stop = true
-            findViewById<Button>(R.id.btn_in).isEnabled = true
-            findViewById<Button>(R.id.btn_out).isEnabled = true
-            findViewById<Button>(R.id.btn_self).isEnabled = true
+
         }
         findViewById<Button>(R.id.btn_q).setOnClickListener {
             System.exit(0)
         }
+    }
+
+    fun stopback() {
+        findViewById<Button>(R.id.btn_in).isEnabled = true
+        findViewById<Button>(R.id.btn_out).isEnabled = true
+        findViewById<Button>(R.id.btn_self).isEnabled = true
     }
 }
 
