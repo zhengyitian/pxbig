@@ -165,8 +165,7 @@ class pl(
         if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            var dd = buf.sliceArray(0 until writeL)
-            audio.write(util.short2byte(dd), 0, writeL * 2)
+            audio.write(buf, 0, writeL)
         } else if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
@@ -174,10 +173,8 @@ class pl(
             }
             fillData(soundData)
             if (oriPos >= aheadLen && playPos < totalLen) {
-                var dd = buf.sliceArray(playPos until playPos + writeL)
+                audio.write(buf, playPos, writeL)
                 playPos += writeL
-                var re = audio.write(util.short2byte(dd), 0, writeL * 2)
-
             }
         } else {
             if (playPos > totalLen) {
@@ -187,10 +184,8 @@ class pl(
             if (oriPos < totalLen) {
                 fillData(soundData)
             }
-            var dd = buf.sliceArray(playPos until playPos + writeL)
+            audio.write(buf, playPos, writeL)
             playPos += writeL
-            var re = audio.write(util.short2byte(dd), 0, writeL * 2)
-
         }
     }
 
@@ -200,7 +195,7 @@ class pl(
     }
 }
 
-class thr5 ( var upper: MainActivity): Thread() {
+class thr5(var upper: MainActivity) : Thread() {
     var cheng = 0.0
     var jia = 0.0
     var kuai = 1.0

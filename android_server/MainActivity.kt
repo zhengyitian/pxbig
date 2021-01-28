@@ -631,6 +631,9 @@ class MainActivity : AppCompatActivity() {
     var firstCat = true
     var catB = 0
     var catE = 0
+    var lastUpTime = System.currentTimeMillis()
+    var addm = true
+
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "ip.txt")
@@ -856,7 +859,10 @@ class MainActivity : AppCompatActivity() {
         progress = progress - (progress % 6)
         var st = "${progress}<br/>"
         for (i in 0 until 6 * 12) {
-            var ss = soundData[progress + i].toString()
+            var nn = soundData[progress + i]
+            if (!addm && nn < 0)
+                nn = (nn * -1).toShort()
+            var ss = nn.toString()
             if (soundData[progress + i] > 0) {
                 st += "<font color=#ff0000 >${ss}&nbsp&nbsp&nbsp </font>"
             } else {
@@ -885,7 +891,20 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
         }
 
+        findViewById<TextView>(R.id.textView).setOnTouchListener { view, motionEvent ->
+            var m = motionEvent.action
+            if (m == MotionEvent.ACTION_UP) {
+                if (System.currentTimeMillis() - lastUpTime < 300) {
+                    addm = !addm
+                    showVal()
+                }
 
+                lastUpTime = System.currentTimeMillis()
+            }
+
+
+            true
+        }
         findViewById<Button>(R.id.stop2btn).setOnClickListener {
             findViewById<Button>(R.id.stop2btn).isEnabled = false
             var t = thr4()
