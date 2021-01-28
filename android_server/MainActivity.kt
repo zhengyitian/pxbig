@@ -188,17 +188,15 @@ class thr4 : Thread() {
 
 
 class backT(var recorder: AudioRecord, var port: Int) : Thread() {
-    var soundData = ShortArray(recordSize)
-
+    var bb = ByteArray(recordSize * 2)
     override fun run() {
         var s = SocketChannel.open()
         var add = InetSocketAddress("127.0.0.1", port)
         s.connect(add)
         while (true) {
             try {
-                recorder.read(soundData, 0, recordSize)
-                var d = util.short2byte(soundData)
-                var b = ByteBuffer.wrap(d)
+                recorder.read(bb, 0, recordSize * 2)
+                var b = ByteBuffer.wrap(bb)
                 var xx = s.write(b)
             } catch (e: Exception) {
                 break
@@ -750,9 +748,7 @@ class MainActivity : AppCompatActivity() {
             }
             if (co + playSize > dataLen2)
                 break
-            var bb = soundData2.sliceArray(co until co + playSize)
-            var d = util.short2byte(bb)
-            audio.write(d, 0, playSize * 2)
+            audio.write(soundData2, co, playSize)
             co += playSize
         }
         audio.stop()
