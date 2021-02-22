@@ -170,11 +170,17 @@ class pl(
             if (oriPos > totalLen) {
                 oriPos = 0
                 playPos = 0
+                println("clear")
             }
             fillData(soundData)
             if (oriPos >= aheadLen && playPos < totalLen) {
                 audio.write(buf, playPos, writeL)
                 playPos += writeL
+            }
+            else
+            {
+                var bb = ShortArray(writeL)
+                audio.write(bb,0,writeL)
             }
         } else {
             if (playPos > totalLen) {
@@ -279,6 +285,7 @@ class backT(var pp: pl, var port: Int, var upper: MainActivity) : Thread() {
                         break
                 } else {
                     Thread.sleep(sleepTime.toLong())
+                    println("sleep")
                 }
 
                 if (cacheCount.get() > 0.5 * 44100 * 4 + maxLag) {
