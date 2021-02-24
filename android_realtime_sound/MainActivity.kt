@@ -209,7 +209,7 @@ class pl(
         if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            if (fftLStr.contains("-") && fftRStr.contains("-")) {
+            if (fftLStr.contains("-") && fftRStr.contains("-")&& con_splitSIze==1) {
                 var jj = fft(buf.sliceArray(0 until writeL))
                 audio.write(jj, 0, jj.size)
             } else {
