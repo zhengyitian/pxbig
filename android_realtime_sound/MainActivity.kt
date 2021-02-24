@@ -23,8 +23,8 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 
-var recordSize = 1024 * 2
-var playSize = 1024 * 2
+var recordSize = 1024 * 8
+var playSize = 1024 * 8
 var slag = 0
 var clag = 0
 var sleepTime = 0
@@ -62,6 +62,9 @@ fun double2short(aa: Double): Short {
 }
 
 var con_splitSIze = 3
+
+var fftLStr = ""
+var fftRStr = ""
 
 class pl(
     var cheng: Double,
@@ -161,11 +164,58 @@ class pl(
         }
     }
 
+    fun dofft(ii: ShortArray, sm: Int, bi: Int): ShortArray {
+        var a = Array<Complex>(ii.size) {
+            Complex(ii[it].toDouble(), 0.0)
+        }
+        var b = FFT.fft(a)
+        for (i in 0..ii.size / 2) {
+            if (i in sm until bi)
+                continue
+            b[i] = Complex(0.0, 0.0)
+            if (i != 0)
+                b[ii.size - i] = Complex(0.0, 0.0)
+        }
+        var xx = FFT.ifft(b)
+        var re = ShortArray(ii.size) { xx[it].re().toShort() }
+        return re
+    }
+
+    fun fft(a: ShortArray): ShortArray {
+        if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
+            var ll = fftLStr.split("-")
+            return dofft(a, ll[0].toInt(), ll[1].toInt())
+        }
+        var l1 = fftLStr.split("-")
+        var l2 = fftRStr.split("-")
+
+        var le = ShortArray(a.size / 2)
+        var ri = ShortArray(a.size / 2)
+        for (i in 0 until a.size / 2) {
+            le[i] = a[2 * i]
+            ri[i] = a[2 * i + 1]
+        }
+        var fle = dofft(le, l1[0].toInt(), l1[1].toInt())
+        var fri = dofft(ri, l2[0].toInt(), l2[1].toInt())
+        var re = ShortArray(a.size)
+        for (i in 0 until a.size / 2) {
+            re[i * 2] = fle[i]
+            re[i * 2 + 1] = fri[i]
+        }
+        return re
+    }
+
     fun inData(soundData: ShortArray) {
         if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            audio.write(buf, 0, writeL)
+            if (fftLStr.contains("-") && fftRStr.contains("-")) {
+                var jj = fft(buf.sliceArray(0 until writeL))
+                audio.write(jj, 0, jj.size)
+            } else {
+                audio.write(buf, 0, writeL)
+            }
+
         } else if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
@@ -176,11 +226,9 @@ class pl(
             if (oriPos >= aheadLen && playPos < totalLen) {
                 audio.write(buf, playPos, writeL)
                 playPos += writeL
-            }
-            else
-            {
+            } else {
                 var bb = ShortArray(writeL)
-                audio.write(bb,0,writeL)
+                audio.write(bb, 0, writeL)
             }
         } else {
             if (playPos > totalLen) {
@@ -480,7 +528,7 @@ class MainActivity : AppCompatActivity() {
                 m_amAudioManager.setSpeakerphoneOn(orispeaker)
             }
         }
-
+        findViewById<EditText>(R.id.fftl).setText(playSize.toString())
         findViewById<Button>(R.id.btn_self).setOnClickListener {
             saveText()
             stFunc()
@@ -498,6 +546,8 @@ class MainActivity : AppCompatActivity() {
             findViewById<EditText>(R.id.text_cha2).setText(bb2.toString())
         }
         findViewById<Button>(R.id.btn_dd).setOnClickListener {
+            fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
+            fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
             setdd(
                 findViewById<EditText>(R.id.dd1).text.toString().toDouble(),
                 findViewById<EditText>(R.id.dd2).text.toString().toDouble(),
@@ -549,4 +599,3 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_self).isEnabled = true
     }
 }
-
