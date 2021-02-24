@@ -20,40 +20,43 @@
             android:ems="10"
             android:inputType="textPersonName"
             android:text="192.168.1.110" />
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
 
-        <EditText
-            android:id="@+id/text_cheng"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:layout_weight="1"
-            android:inputType="textPersonName"
-            android:text="1" />
-
-        <EditText
-            android:id="@+id/text_jia"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:layout_weight="1"
-            android:inputType="textPersonName"
-            android:text="0" />
-    </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/text_cheng"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="textPersonName"
+                android:text="1" />
+
+            <EditText
+                android:id="@+id/text_jia"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="textPersonName"
+                android:text="0" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
             <EditText
                 android:id="@+id/fjf"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:enabled="false"
                 android:ems="10"
+                android:enabled="false"
                 android:inputType="textPersonName"
                 android:text="slag" />
 
@@ -61,8 +64,8 @@
                 android:id="@+id/text_slag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="10" />
 
@@ -71,8 +74,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:enabled="false"
                 android:ems="10"
+                android:enabled="false"
                 android:inputType="textPersonName"
                 android:text="clag" />
 
@@ -80,17 +83,18 @@
                 android:id="@+id/text_clag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="3" />
+
             <EditText
                 android:id="@+id/xxff"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:enabled="false"
                 android:ems="10"
+                android:enabled="false"
                 android:inputType="textPersonName"
                 android:text="sleep" />
 
@@ -98,8 +102,8 @@
                 android:id="@+id/text_sleep"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="500" />
 
@@ -115,8 +119,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:enabled="false"
                 android:ems="10"
+                android:enabled="false"
                 android:inputType="textPersonName"
                 android:text="fre" />
 
@@ -124,8 +128,8 @@
                 android:id="@+id/text_kuai"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="1" />
 
@@ -134,8 +138,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:enabled="false"
                 android:ems="10"
+                android:enabled="false"
                 android:inputType="textPersonName"
                 android:text="len" />
 
@@ -143,8 +147,8 @@
                 android:id="@+id/text_len"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="10" />
         </LinearLayout>
@@ -176,53 +180,97 @@
                 android:text="stop" />
         </LinearLayout>
 
-
-        <Button
-            android:id="@+id/btn_self"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="self" />
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_self"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="self" />
 
 
-        <Button
-            android:id="@+id/btn_q"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="quit" />
+            <Button
+                android:id="@+id/btn_q"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="quit" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/xfx"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:enabled="false"
+                android:inputType="textPersonName"
+                android:text="fft" />
+
+            <EditText
+                android:id="@+id/fftl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:text="0" />
+
+            <EditText
+                android:id="@+id/fftr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:text="0" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
             <EditText
                 android:id="@+id/text_index"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
+
             <EditText
                 android:id="@+id/text_cha"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="1" />
+
             <EditText
                 android:id="@+id/text_cha2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
+
             <Button
                 android:id="@+id/btn_save"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="save" />
+
             <Button
                 android:id="@+id/btn_load"
                 android:layout_width="wrap_content"
@@ -234,52 +282,58 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
+
             <EditText
                 android:id="@+id/dd1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="1" />
+
             <EditText
                 android:id="@+id/dd2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
+
             <EditText
                 android:id="@+id/dd3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="1" />
+
             <EditText
                 android:id="@+id/dd4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
+
             <EditText
                 android:id="@+id/dd5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="1" />
+
             <EditText
                 android:id="@+id/dd6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
                 android:layout_weight="1"
+                android:ems="10"
                 android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
 
@@ -289,18 +343,21 @@
                 android:layout_height="wrap_content"
                 android:text="L" />
         </LinearLayout>
+
         <Switch
             android:id="@+id/switch_in"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
             android:text="in" />
+
         <Switch
             android:id="@+id/switch_out"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
             android:text="out" />
+
         <Switch
             android:id="@+id/switch_split"
             android:layout_width="wrap_content"

@@ -790,7 +790,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun fft(a: ShortArray): ShortArray {
-        var ll = fftStr.split(",")
+        var ll = fftStr.split("-")
         var le = ShortArray(fftLen)
         var ri = ShortArray(fftLen)
         for (i in 0 until fftLen) {
@@ -858,7 +858,7 @@ class MainActivity : AppCompatActivity() {
         audio.play()
         var j =
             findViewById<SeekBar>(R.id.seekBar2).progress.toFloat() / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
-        if (fftStr.contains(",")) {
+        if (fftStr.contains("-")) {
             var tt = Thread(Runnable { doPlay2(j); })
             tt.start()
         } else {
