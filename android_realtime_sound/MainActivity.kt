@@ -127,6 +127,13 @@ class writeThr(
             if (stop)
                 return
             lo.lock()
+            if (fftlsm < 0) {
+                lin.clear()
+                outl.clear()
+                lo.unlock()
+                Thread.sleep(10)
+                continue
+            }
             if (lin.isEmpty()) {
                 lo.unlock()
                 Thread.sleep(10)
