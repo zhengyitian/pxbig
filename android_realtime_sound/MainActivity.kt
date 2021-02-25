@@ -178,7 +178,7 @@ class pl(
                 b[ii.size - i] = Complex(0.0, 0.0)
         }
         var xx = FFT.ifft(b)
-        var re = ShortArray(ii.size) { xx[it].re().toShort() }
+        var re = ShortArray(ii.size) { double2short(xx[it].re()) }
         return re
     }
 

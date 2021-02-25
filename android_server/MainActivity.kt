@@ -50,8 +50,8 @@ var full_version = true
 //samsung 5c 1920 1920
 //redmi note9 2340
 
-var con_width = 1520
-var con_height = 1520
+var con_width = 1920
+var con_height = 1920
 
 //end of config
 
@@ -623,6 +623,14 @@ class thr : Thread() {
 }
 
 var fftLen = 8 * 1024
+fun double2short(aa: Double): Short {
+    if (aa >= Short.MAX_VALUE)
+        return Short.MAX_VALUE
+    else if (aa <= Short.MIN_VALUE)
+        return Short.MIN_VALUE
+    else
+        return aa.toShort()
+}
 
 class MainActivity : AppCompatActivity() {
     lateinit var ii: Intent
@@ -785,7 +793,7 @@ class MainActivity : AppCompatActivity() {
                 b[fftLen - i] = Complex(0.0, 0.0)
         }
         var xx = FFT.ifft(b)
-        var re = ShortArray(ii.size) { xx[it].re().toShort() }
+        var re = ShortArray(ii.size) { double2short(xx[it].re()) }
         return re
     }
 
@@ -1209,4 +1217,5 @@ class MainActivity : AppCompatActivity() {
     }
 
 }
+
 
