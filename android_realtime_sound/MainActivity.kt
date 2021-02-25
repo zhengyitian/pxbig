@@ -21,6 +21,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 
 var recordSize = 1024 * 8
@@ -45,6 +46,10 @@ var g_split = false
 var g_cheng = 1.0
 var g_jia = 1.0
 
+var fftlsm = -1
+var fftlbig = 0
+var fftrsm = 0
+var fftrbig = 0
 
 fun setdd(a1: Double, a2: Double, a3: Double, a4: Double, a5: Double, a6: Double) {
     d1_cheng = a1
@@ -66,8 +71,76 @@ fun double2short(aa: Double): Short {
 
 var con_splitSIze = 3
 
-var fftLStr = ""
-var fftRStr = ""
+fun dofft(ii: ShortArray, sm: Int, bi: Int): ShortArray {
+    var a = Array<Complex>(ii.size) {
+        Complex(ii[it].toDouble(), 0.0)
+    }
+    var b = FFT.fft(a)
+    for (i in 0..ii.size / 2) {
+        if (i in sm until bi)
+            continue
+        b[i] = Complex(0.0, 0.0)
+        if (i != 0)
+            b[ii.size - i] = Complex(0.0, 0.0)
+    }
+    var xx = FFT.ifft(b)
+    var re = ShortArray(ii.size) { double2short(xx[it].re()) }
+    return re
+}
+
+class writeThr(
+    var lo: ReentrantLock,
+    var lin: LinkedList<ShortArray>,
+    var outl: LinkedList<ShortArray>,
+    var outFormat: Int
+
+) : Thread() {
+    var stop = false
+
+    fun close() {
+        stop = true
+    }
+
+    fun fft(a: ShortArray): ShortArray {
+        if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
+            return dofft(a, fftlsm, fftlbig)
+        }
+
+        var le = ShortArray(a.size / 2)
+        var ri = ShortArray(a.size / 2)
+        for (i in 0 until a.size / 2) {
+            le[i] = a[2 * i]
+            ri[i] = a[2 * i + 1]
+        }
+        var fle = dofft(le, fftlsm, fftlbig)
+        var fri = dofft(ri, fftrsm, fftrbig)
+        var re = ShortArray(a.size)
+        for (i in 0 until a.size / 2) {
+            re[i * 2] = fle[i]
+            re[i * 2 + 1] = fri[i]
+        }
+        return re
+    }
+
+    override fun run() {
+        while (true) {
+            if (stop)
+                return
+            lo.lock()
+            if (lin.isEmpty()) {
+                lo.unlock()
+                Thread.sleep(10)
+                continue
+            }
+            var dd = lin.pop()
+            lo.unlock()
+            var re = fft(dd)
+            lo.lock()
+            outl.add(re)
+            lo.unlock()
+        }
+    }
+}
 
 class pl(
     var kuai: Double,
@@ -83,8 +156,13 @@ class pl(
     var buf = ShortArray(0)
     var writeL = (kuai * playSize).toInt()
     var isSplit = g_split
+    var lo = ReentrantLock()
+    var lin = LinkedList<ShortArray>()
+    var outl = LinkedList<ShortArray>()
+    lateinit var tt: writeThr
 
     init {
+
         if (kuai > 3 || kuai < 0.3)
             kuai = 1.0
         if (isSplit) con_splitSIze = 3
@@ -115,6 +193,9 @@ class pl(
         )
 
         audio.play()
+        tt = writeThr(lo, lin, outl, outFormat)
+        tt.isDaemon = true
+        tt.start()
     }
 
     fun fillData(soundData: ShortArray) {
@@ -165,53 +246,21 @@ class pl(
         }
     }
 
-    fun dofft(ii: ShortArray, sm: Int, bi: Int): ShortArray {
-        var a = Array<Complex>(ii.size) {
-            Complex(ii[it].toDouble(), 0.0)
-        }
-        var b = FFT.fft(a)
-        for (i in 0..ii.size / 2) {
-            if (i in sm until bi)
-                continue
-            b[i] = Complex(0.0, 0.0)
-            if (i != 0)
-                b[ii.size - i] = Complex(0.0, 0.0)
-        }
-        var xx = FFT.ifft(b)
-        var re = ShortArray(ii.size) { double2short(xx[it].re()) }
-        return re
-    }
-
-    fun fft(a: ShortArray): ShortArray {
-        if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
-            var ll = fftLStr.split("-")
-            return dofft(a, ll[0].toInt(), ll[1].toInt())
-        }
-        var l1 = fftLStr.split("-")
-        var l2 = fftRStr.split("-")
-
-        var le = ShortArray(a.size / 2)
-        var ri = ShortArray(a.size / 2)
-        for (i in 0 until a.size / 2) {
-            le[i] = a[2 * i]
-            ri[i] = a[2 * i + 1]
-        }
-        var fle = dofft(le, l1[0].toInt(), l1[1].toInt())
-        var fri = dofft(ri, l2[0].toInt(), l2[1].toInt())
-        var re = ShortArray(a.size)
-        for (i in 0 until a.size / 2) {
-            re[i * 2] = fle[i]
-            re[i * 2 + 1] = fri[i]
-        }
-        return re
-    }
 
     fun inData(soundData: ShortArray) {
         if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            if (fftLStr.contains("-") && fftRStr.contains("-") && con_splitSIze == 1) {
-                var jj = fft(buf.sliceArray(0 until writeL))
+            if (fftlsm >= 0 && con_splitSIze == 1) {
+                lo.lock()
+                lin.add(buf.sliceArray(0 until writeL))
+                if (outl.isEmpty()) {
+                    lo.unlock()
+                    audio.write(ShortArray(writeL), 0, writeL)
+                    return
+                }
+                var jj = outl.pop()
+                lo.unlock()
                 audio.write(jj, 0, jj.size)
             } else {
                 audio.write(buf, 0, writeL)
@@ -247,6 +296,7 @@ class pl(
     fun close() {
         audio.stop()
         audio.release()
+        tt.close()
     }
 }
 
@@ -547,8 +597,18 @@ class MainActivity : AppCompatActivity() {
             findViewById<EditText>(R.id.text_cha2).setText(bb2.toString())
         }
         findViewById<Button>(R.id.btn_dd).setOnClickListener {
-            fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
-            fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
+            var fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
+            var fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
+            if (fftLStr.contains("-") && fftRStr.contains("-")) {
+                var l1 = fftLStr.split("-")
+                var l2 = fftRStr.split("-")
+                fftlsm = l1[0].toInt()
+                fftlbig = l1[1].toInt()
+                fftrsm = l2[0].toInt()
+                fftrbig = l2[1].toInt()
+            } else {
+                fftlsm = -1
+            }
             setcheng()
             setdd(
                 findViewById<EditText>(R.id.dd1).text.toString().toDouble(),
