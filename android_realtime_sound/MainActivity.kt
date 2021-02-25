@@ -42,6 +42,9 @@ var d2_jia = 0.0
 var d3_cheng = 1.0
 var d3_jia = 0.0
 var g_split = false
+var g_cheng = 1.0
+var g_jia = 1.0
+
 
 fun setdd(a1: Double, a2: Double, a3: Double, a4: Double, a5: Double, a6: Double) {
     d1_cheng = a1
@@ -67,8 +70,6 @@ var fftLStr = ""
 var fftRStr = ""
 
 class pl(
-    var cheng: Double,
-    var jia: Double,
     var kuai: Double,
     var onePieceTime: Double,
     var outFormat: Int
@@ -122,7 +123,7 @@ class pl(
         if (!isSplit) {
             for (i in 0 until si) {
                 var ab = abs(soundData[i].toInt()) % 16
-                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * g_cheng + g_jia
                 buf[oriPos] = double2short(meanV)
                 oriPos += 1
             }
@@ -133,7 +134,7 @@ class pl(
         if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
             for (i in 0 until si) {
                 var ab = abs(soundData[i].toInt()) % 16
-                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                var meanV = (soundData[i] * g_cha[ab] + g_cha2[ab]) * g_cheng + g_jia
                 buf[oriPos] = double2short(meanV * d1_cheng + d1_jia)
                 oriPos += 1
                 buf[oriPos] = double2short(meanV * d2_cheng + d2_jia)
@@ -145,9 +146,9 @@ class pl(
             for (i in 0 until si) {
                 if (i % 2 != 0) continue
                 var ab = abs(soundData[i].toInt()) % 16
-                var mean1 = (soundData[i] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                var mean1 = (soundData[i] * g_cha[ab] + g_cha2[ab]) * g_cheng + g_jia
                 var ab2 = abs(soundData[i + 1].toInt()) % 16
-                var mean2 = (soundData[i + 1] * g_cha[ab] + g_cha2[ab]) * cheng + jia
+                var mean2 = (soundData[i + 1] * g_cha[ab] + g_cha2[ab]) * g_cheng + g_jia
                 buf[oriPos] = double2short(mean1 * d1_cheng + d1_jia)
                 oriPos += 1
                 buf[oriPos] = double2short(mean2 * d1_cheng + d1_jia)
@@ -209,7 +210,7 @@ class pl(
         if (kuai > 0.99999 && kuai < 1.00001) {
             oriPos = 0
             fillData(soundData)
-            if (fftLStr.contains("-") && fftRStr.contains("-")&& con_splitSIze==1) {
+            if (fftLStr.contains("-") && fftRStr.contains("-") && con_splitSIze == 1) {
                 var jj = fft(buf.sliceArray(0 until writeL))
                 audio.write(jj, 0, jj.size)
             } else {
@@ -250,8 +251,6 @@ class pl(
 }
 
 class thr5(var upper: MainActivity) : Thread() {
-    var cheng = 0.0
-    var jia = 0.0
     var kuai = 1.0
     var onePieceTime = 6.0
 
@@ -275,7 +274,7 @@ class thr5(var upper: MainActivity) : Thread() {
             .setBufferSizeInBytes(recordSize * 2)
             .build();
         recorder.startRecording();
-        var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
+        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
         var soundData = ShortArray(recordSize)
         while (!g_stop) {
             var re = recorder.read(soundData, 0, recordSize)
@@ -367,8 +366,6 @@ class backT(var pp: pl, var port: Int, var upper: MainActivity) : Thread() {
 
 class thr4(var i: Int, var upper: MainActivity) : Thread() {
     var ip = ""
-    var cheng = 0.0
-    var jia = 0.0
     var kuai = 1.0
     var onePieceTime = 6.0
 
@@ -382,7 +379,7 @@ class thr4(var i: Int, var upper: MainActivity) : Thread() {
         bf.putInt(slag)
         bf.flip()
         so.write(bf)
-        var pp = pl(cheng, jia, kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
+        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
 
         var s2 = ServerSocketChannel.open()
         var add2 = InetSocketAddress("0.0.0.0", 27788)
@@ -468,6 +465,11 @@ var orimode = 0
 var orispeaker = false
 
 class MainActivity : AppCompatActivity() {
+    fun setcheng() {
+        g_cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
+        g_jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+    }
+
     fun saveText() {
         var path: File = baseContext.filesDir
         var file: File = File(path, "ip.txt")
@@ -533,8 +535,7 @@ class MainActivity : AppCompatActivity() {
             saveText()
             stFunc()
             var t = thr5(this)
-            t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
-            t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            setcheng()
             t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
             t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
@@ -548,6 +549,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_dd).setOnClickListener {
             fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
             fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
+            setcheng()
             setdd(
                 findViewById<EditText>(R.id.dd1).text.toString().toDouble(),
                 findViewById<EditText>(R.id.dd2).text.toString().toDouble(),
@@ -568,8 +570,7 @@ class MainActivity : AppCompatActivity() {
             stFunc()
             var t = thr4(1, this)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
-            t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
-            t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            setcheng()
             t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
             t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
@@ -578,8 +579,7 @@ class MainActivity : AppCompatActivity() {
             stFunc()
             var t = thr4(2, this)
             t.ip = findViewById<EditText>(R.id.text_ip).text.toString()
-            t.cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
-            t.jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+            setcheng()
             t.kuai = findViewById<EditText>(R.id.text_kuai).text.toString().toDouble()
             t.onePieceTime = findViewById<EditText>(R.id.text_len).text.toString().toDouble()
             t.start()
@@ -599,3 +599,4 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_self).isEnabled = true
     }
 }
+
