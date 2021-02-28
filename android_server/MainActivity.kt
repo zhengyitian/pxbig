@@ -49,6 +49,7 @@ var full_version = true
 //redmi8a 1520 1520
 //samsung 5c 1920 1920
 //redmi note9 2340
+//samsung a9 star 2220
 
 var con_width = 1920
 var con_height = 1920
@@ -1090,6 +1091,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.rebtn).setOnClickListener {
             soundData = soundData_b.copyOf()
             dataLen = dataLen_b
+            showVal()
         }
         findViewById<Button>(R.id.stopBtn).setOnClickListener {
             doStop()
