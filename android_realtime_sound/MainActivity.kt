@@ -101,7 +101,19 @@ class writeThr(
         stop = true
     }
 
-    fun fft(a: ShortArray): ShortArray {
+    fun fft(buf: ShortArray): ShortArray {
+        var a = ShortArray(buf.size)
+
+        for (i in 0 until buf.size) {
+            var ab = abs(buf[i].toInt()) % 16
+            var meanV = (buf[i] * g_cha[ab] + g_cha2[ab]) * g_cheng + g_jia
+            a[i] = double2short(meanV)
+        }
+
+        if (fftlsm < 0) {
+            return a
+        }
+
         if (outFormat == AudioFormat.CHANNEL_OUT_MONO) {
             return dofft(a, fftlsm, fftlbig)
         }
@@ -127,18 +139,13 @@ class writeThr(
             if (stop)
                 return
             lo.lock()
-            if (fftlsm < 0) {
-                lin.clear()
-                outl.clear()
-                lo.unlock()
-                Thread.sleep(10)
-                continue
-            }
+
             if (lin.isEmpty()) {
                 lo.unlock()
-                Thread.sleep(10)
+                Thread.sleep(30)
                 continue
             }
+
             var dd = lin.pop()
             lo.unlock()
             var re = fft(dd)
@@ -167,12 +174,12 @@ class pl(
     var lin = LinkedList<ShortArray>()
     var outl = LinkedList<ShortArray>()
     lateinit var tt: writeThr
-    var wait = 0
 
     init {
 
         if (kuai > 3 || kuai < 0.3)
             kuai = 1.0
+
         if (isSplit) con_splitSIze = 3
         else con_splitSIze = 1
 
@@ -257,36 +264,27 @@ class pl(
 
     fun inData(soundData: ShortArray) {
         if (kuai > 0.99999 && kuai < 1.00001) {
-            oriPos = 0
-            fillData(soundData)
-            if (fftlsm >= 0 && con_splitSIze == 1) {
-                if (wait > 0) {
-                    wait -= 1
-                    audio.write(ShortArray(writeL), 0, writeL)
-                    return
-                }
-
+            if (con_splitSIze == 1) {
                 lo.lock()
+                lin.add(soundData)
                 if (outl.isEmpty()) {
-                    wait = 44100 / writeL
-                    if (outFormat == AudioFormat.CHANNEL_OUT_MONO)
-                        wait = 44100 / 2 / writeL
-                    wait -= 1
-                    outl.addFirst(ShortArray(writeL))
                     lo.unlock()
                     audio.write(ShortArray(writeL), 0, writeL)
                     return
                 }
-
-                lin.add(buf.sliceArray(0 until writeL))
                 var jj = outl.pop()
                 lo.unlock()
                 audio.write(jj, 0, jj.size)
-            } else {
-                audio.write(buf, 0, writeL)
+                return
             }
 
-        } else if (kuai >= 1) {
+            oriPos = 0
+            fillData(soundData)
+            audio.write(buf, 0, writeL)
+            return
+
+        }
+        if (kuai >= 1) {
             if (oriPos > totalLen) {
                 oriPos = 0
                 playPos = 0
@@ -296,21 +294,23 @@ class pl(
             if (oriPos >= aheadLen && playPos < totalLen) {
                 audio.write(buf, playPos, writeL)
                 playPos += writeL
-            } else {
-                var bb = ShortArray(writeL)
-                audio.write(bb, 0, writeL)
+                return
             }
-        } else {
-            if (playPos > totalLen) {
-                oriPos = 0
-                playPos = 0
-            }
-            if (oriPos < totalLen) {
-                fillData(soundData)
-            }
-            audio.write(buf, playPos, writeL)
-            playPos += writeL
+            var bb = ShortArray(writeL)
+            audio.write(bb, 0, writeL)
+            return
         }
+
+        if (playPos > totalLen) {
+            oriPos = 0
+            playPos = 0
+        }
+        if (oriPos < totalLen) {
+            fillData(soundData)
+        }
+        audio.write(buf, playPos, writeL)
+        playPos += writeL
+
     }
 
     fun close() {
@@ -538,6 +538,7 @@ class MainActivity : AppCompatActivity() {
     fun setcheng() {
         g_cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
         g_jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
+        setfft()
     }
 
     fun saveText() {
@@ -569,6 +570,21 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_in).isEnabled = false
         findViewById<Button>(R.id.btn_out).isEnabled = false
         findViewById<Button>(R.id.btn_self).isEnabled = false
+    }
+
+    fun setfft() {
+        var fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
+        var fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
+        if (fftLStr.contains("-") && fftRStr.contains("-")) {
+            var l1 = fftLStr.split("-")
+            var l2 = fftRStr.split("-")
+            fftlsm = l1[0].toInt()
+            fftlbig = l1[1].toInt()
+            fftrsm = l2[0].toInt()
+            fftrbig = l2[1].toInt()
+        } else {
+            fftlsm = -1
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -617,18 +633,6 @@ class MainActivity : AppCompatActivity() {
             findViewById<EditText>(R.id.text_cha2).setText(bb2.toString())
         }
         findViewById<Button>(R.id.btn_dd).setOnClickListener {
-            var fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
-            var fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
-            if (fftLStr.contains("-") && fftRStr.contains("-")) {
-                var l1 = fftLStr.split("-")
-                var l2 = fftRStr.split("-")
-                fftlsm = l1[0].toInt()
-                fftlbig = l1[1].toInt()
-                fftrsm = l2[0].toInt()
-                fftrbig = l2[1].toInt()
-            } else {
-                fftlsm = -1
-            }
             setcheng()
             setdd(
                 findViewById<EditText>(R.id.dd1).text.toString().toDouble(),
