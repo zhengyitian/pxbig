@@ -167,6 +167,7 @@ class pl(
     var lin = LinkedList<ShortArray>()
     var outl = LinkedList<ShortArray>()
     lateinit var tt: writeThr
+    var wait = 0
 
     init {
 
@@ -259,13 +260,25 @@ class pl(
             oriPos = 0
             fillData(soundData)
             if (fftlsm >= 0 && con_splitSIze == 1) {
+                if (wait > 0) {
+                    wait -= 1
+                    audio.write(ShortArray(writeL), 0, writeL)
+                    return
+                }
+
                 lo.lock()
-                lin.add(buf.sliceArray(0 until writeL))
                 if (outl.isEmpty()) {
+                    wait = 44100 / writeL
+                    if (outFormat == AudioFormat.CHANNEL_OUT_MONO)
+                        wait = 44100 / 2 / writeL
+                    wait -= 1
+                    outl.addFirst(ShortArray(writeL))
                     lo.unlock()
                     audio.write(ShortArray(writeL), 0, writeL)
                     return
                 }
+
+                lin.add(buf.sliceArray(0 until writeL))
                 var jj = outl.pop()
                 lo.unlock()
                 audio.write(jj, 0, jj.size)
