@@ -208,7 +208,7 @@
 
             <EditText
                 android:id="@+id/xfx"
-                android:layout_width="150dp"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
@@ -230,6 +230,15 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
+                android:text="0" />
+
+            <EditText
+                android:id="@+id/ftcho"
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="numberSigned|number|numberDecimal"
                 android:text="0" />
         </LinearLayout>
 

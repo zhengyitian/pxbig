@@ -50,6 +50,7 @@ var fftlsm = -1
 var fftlbig = 0
 var fftrsm = 0
 var fftrbig = 0
+var fftcho = AtomicInteger(0)
 
 fun setdd(a1: Double, a2: Double, a3: Double, a4: Double, a5: Double, a6: Double) {
     d1_cheng = a1
@@ -121,9 +122,18 @@ class writeThr(
         var le = ShortArray(a.size / 2)
         var ri = ShortArray(a.size / 2)
         for (i in 0 until a.size / 2) {
-            le[i] = a[2 * i]
-            ri[i] = a[2 * i + 1]
+            if (fftcho.get() == 0) {
+                le[i] = a[2 * i]
+                ri[i] = a[2 * i + 1]
+            } else if (fftcho.get() == 1) {
+                le[i] = a[2 * i]
+                ri[i] = a[2 * i]
+            } else {
+                le[i] = a[2 * i + 1]
+                ri[i] = a[2 * i + 1]
+            }
         }
+
         var fle = dofft(le, fftlsm, fftlbig)
         var fri = dofft(ri, fftrsm, fftrbig)
         var re = ShortArray(a.size)
@@ -575,6 +585,7 @@ class MainActivity : AppCompatActivity() {
     fun setfft() {
         var fftLStr = findViewById<EditText>(R.id.fftl).text.toString()
         var fftRStr = findViewById<EditText>(R.id.fftr).text.toString()
+        fftcho.set(findViewById<EditText>(R.id.ftcho).text.toString().toInt())
         if (fftLStr.contains("-") && fftRStr.contains("-")) {
             var l1 = fftLStr.split("-")
             var l2 = fftRStr.split("-")

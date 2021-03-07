@@ -10,4 +10,4 @@ switch_in on : sound from normal mic,otherwise from camera mic
 switch_out on : sound out speaker when headset on
 switch_split on: enable 1->3 change
 
-fft栏，两个对应左右声道，按L按钮加载，被“-”分割成两个数，构成一个范围。当都包含“-”，且fre是1，且没开split时，开启fft（傅里叶变换）。此范围内的频谱保留。每次fft的长度为8192（通过self录音），4096（通过网络收音）.因频谱是对称的，所以范围的最大值分别是4096，2048。
+fft栏，两个对应左右声道，按L按钮加载，被“-”分割成两个数，构成一个范围。当都包含“-”，且fre是1，且没开split时，开启fft（傅里叶变换）。此范围内的频谱保留。每次fft的长度为8192（通过self录音），4096（通过网络收音）.因频谱是对称的，所以范围的最大值分别是4096，2048。后面一个是0则对双声道生效，1或2将一个声道覆盖另一个声道。
