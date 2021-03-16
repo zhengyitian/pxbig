@@ -169,7 +169,8 @@ class writeThr(
 class pl(
     var kuai: Double,
     var onePieceTime: Double,
-    var outFormat: Int
+    var outFormat: Int,
+    var upper: MainActivity
 ) {
     lateinit var audio: AudioTrack
     var playFre = 0.0
@@ -280,17 +281,20 @@ class pl(
                 if (outl.isEmpty()) {
                     lo.unlock()
                     audio.write(ShortArray(writeL), 0, writeL)
+                    upper.runOnUiThread({ upper.addco() })
                     return
                 }
                 var jj = outl.pop()
                 lo.unlock()
                 audio.write(jj, 0, jj.size)
+                upper.runOnUiThread({ upper.addco() })
                 return
             }
 
             oriPos = 0
             fillData(soundData)
             audio.write(buf, 0, writeL)
+            upper.runOnUiThread({ upper.addco() })
             return
 
         }
@@ -303,11 +307,13 @@ class pl(
             fillData(soundData)
             if (oriPos >= aheadLen && playPos < totalLen) {
                 audio.write(buf, playPos, writeL)
+                upper.runOnUiThread({ upper.addco() })
                 playPos += writeL
                 return
             }
             var bb = ShortArray(writeL)
             audio.write(bb, 0, writeL)
+            upper.runOnUiThread({ upper.addco() })
             return
         }
 
@@ -319,6 +325,7 @@ class pl(
             fillData(soundData)
         }
         audio.write(buf, playPos, writeL)
+        upper.runOnUiThread({ upper.addco() })
         playPos += writeL
 
     }
@@ -354,7 +361,7 @@ class thr5(var upper: MainActivity) : Thread() {
             .setBufferSizeInBytes(recordSize * 2)
             .build();
         recorder.startRecording();
-        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO)
+        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_MONO, upper)
         var soundData = ShortArray(recordSize)
         while (!g_stop) {
             var re = recorder.read(soundData, 0, recordSize)
@@ -459,7 +466,7 @@ class thr4(var i: Int, var upper: MainActivity) : Thread() {
         bf.putInt(slag)
         bf.flip()
         so.write(bf)
-        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO)
+        var pp = pl(kuai, onePieceTime, AudioFormat.CHANNEL_OUT_STEREO, upper)
 
         var s2 = ServerSocketChannel.open()
         var add2 = InetSocketAddress("0.0.0.0", 27788)
@@ -545,6 +552,12 @@ var orimode = 0
 var orispeaker = false
 
 class MainActivity : AppCompatActivity() {
+    var co = 0
+    fun addco() {
+        co += 1;
+        findViewById<EditText>(R.id.co).setText((co % 1000).toString())
+    }
+
     fun setcheng() {
         g_cheng = findViewById<EditText>(R.id.text_cheng).text.toString().toDouble()
         g_jia = findViewById<EditText>(R.id.text_jia).text.toString().toDouble()
