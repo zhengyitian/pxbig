@@ -10,10 +10,15 @@ ti = datetime.datetime.now()
 g_5time = 0
 
 def getStat():
+    global ti
+    ti = str(datetime.datetime.now())
     if g_stat==b'1':
+        ti += '#sta:1'
         return g_stat
     if time.time()-g_5time<5:
+        ti += '#g_5'
         return b'1'
+    ti += '#sta:0'
     return g_stat
     
 
@@ -39,7 +44,7 @@ def one(a):
     
     if ss[10:]==b'3':
         g_lock.acquire()
-        ti = datetime.datetime.now()
+        
         x = getStat()
         g_lock.release()
         a.sendall(x)
