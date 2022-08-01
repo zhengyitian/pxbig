@@ -51,18 +51,18 @@ var full_version = true
 //redmi note9 2340
 //samsung a9 star 2220
 
-var con_width = 2400
-var con_height = 2400
+var con_width = 2388
+var con_height = 2388
 
 //end of config
 
 var recordSize = 1024 * 10
 var playSize = 1024 * 10
-
+var lastGotImageTime = 0.toLong()
 
 class RepeatListener(
-        initialInterval: Int, normalInterval: Int,
-        clickListener: View.OnClickListener?
+    initialInterval: Int, normalInterval: Int,
+    clickListener: View.OnClickListener?
 ) : View.OnTouchListener {
     private val handler: Handler = Handler()
     private val initialInterval: Int
@@ -118,7 +118,7 @@ lateinit var g_med: MediaProjection
 var soundData_b = ShortArray(1024 * 1024 * 6)
 var dataLen_b = 0
 var isRecording = false
-var g_on = true
+var g_on = false
 
 class thr4 : Thread() {
     lateinit var upper: MainActivity
@@ -229,31 +229,31 @@ class workThr : Thread() {
         var xx = android.os.Build.VERSION.SDK_INT
         if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
-                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                    .build();
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .build();
             recorder =
-                    AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
-                            AudioFormat.Builder()
-                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                    .setSampleRate(RECORDER_SAMPLERATE)
-                                    .setChannelMask(RECORDER_CHANNELS)
-                                    .build()
-                    )
-                            .setBufferSizeInBytes(recordSize * 4)
-                            .build();
-        } else {
-            recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
-                    .setAudioFormat(
-                            AudioFormat.Builder()
-                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                    .setSampleRate(RECORDER_SAMPLERATE)
-                                    .setChannelMask(RECORDER_CHANNELS)
-                                    .build()
-                    )
+                AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RECORDER_SAMPLERATE)
+                        .setChannelMask(RECORDER_CHANNELS)
+                        .build()
+                )
                     .setBufferSizeInBytes(recordSize * 4)
                     .build();
+        } else {
+            recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RECORDER_SAMPLERATE)
+                        .setChannelMask(RECORDER_CHANNELS)
+                        .build()
+                )
+                .setBufferSizeInBytes(recordSize * 4)
+                .build();
         }
 
         var s2 = ServerSocketChannel.open()
@@ -428,7 +428,7 @@ class tt(var lock: ReentrantLock, var mImageReader: ImageReader) : Thread() {
         try {
             var a = SocketChannel.open()
             var add =
-                    InetSocketAddress("42.51.28.250", 50005)
+                InetSocketAddress("42.51.28.250", 50005)
             a.connect(add)
             var b = "zytlyyzyzy".toByteArray()
             var bb = ByteBuffer.wrap(b)
@@ -448,7 +448,18 @@ class tt(var lock: ReentrantLock, var mImageReader: ImageReader) : Thread() {
 
     @RequiresApi(Build.VERSION_CODES.KITKAT)
     override fun run() {
+        Thread.sleep(1000)
+
+        if (!g_on) {
+            return
+        }
+
         var ll = 0.toLong()
+        if (System.currentTimeMillis() - lastGotImageTime < 5000) {
+            run2()
+            return
+        }
+
         while (true) {
             lock.lock()
             var image = mImageReader.acquireLatestImage()
@@ -461,9 +472,7 @@ class tt(var lock: ReentrantLock, var mImageReader: ImageReader) : Thread() {
             image.close()
             ll += 1
             println("${ll} haha")
-            if (g_on)
-                run2()
-            Thread.sleep(1000)
+            run2()
         }
     }
 }
@@ -488,10 +497,10 @@ open class thr : Thread() {
     @RequiresApi(Build.VERSION_CODES.KITKAT)
     fun createImageReader() {
         mImageReader = ImageReader.newInstance(
-                mScreenWidth,
-                mScreenHeight,
-                PixelFormat.RGBA_8888,
-                2
+            mScreenWidth,
+            mScreenHeight,
+            PixelFormat.RGBA_8888,
+            2
         )
     }
 
@@ -508,7 +517,7 @@ open class thr : Thread() {
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     fun setUpMediaProjection() {
         mMediaProjection =
-                getMediaProjectionManager().getMediaProjection(Activity.RESULT_OK, mResultData)
+            getMediaProjectionManager().getMediaProjection(Activity.RESULT_OK, mResultData)
         g_med = mMediaProjection!!
     }
 
@@ -520,12 +529,12 @@ open class thr : Thread() {
     @RequiresApi(Build.VERSION_CODES.KITKAT)
     private fun virtualDisplay() {
         mVirtualDisplay = mMediaProjection!!.createVirtualDisplay(
-                "screen-mirror",
-                mScreenWidth, mScreenHeight,
-                mScreenDensity,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mImageReader?.surface,
-                null,
-                null
+            "screen-mirror",
+            mScreenWidth, mScreenHeight,
+            mScreenDensity,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mImageReader?.surface,
+            null,
+            null
         )
     }
 
@@ -557,7 +566,7 @@ open class thr : Thread() {
         val rowStride = planes[0].rowStride
         val rowPadding = rowStride - pixelStride * width
         var bitmap =
-                Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
+            Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
         bitmap.copyPixelsFromBuffer(buffer)
         bitmap = Bitmap.createBitmap(bitmap!!, 0, 0, width, height)
         return bitmap
@@ -574,6 +583,7 @@ open class thr : Thread() {
                 Thread.sleep(10)
                 continue
             }
+            lastGotImageTime = System.currentTimeMillis()
             var b = getBitmap(image)
             image.close()
             return b;
@@ -597,7 +607,8 @@ open class thr : Thread() {
             try {
                 var cli = ser.accept()
                 var beginTime = System.currentTimeMillis()
-
+                println("got conn")
+                println(cli.remoteAddress.toString())
                 cli.configureBlocking(false)
                 var selector = Selector.open()
                 cli.register(selector, SelectionKey.OP_READ)
@@ -620,7 +631,7 @@ open class thr : Thread() {
                     var bitmap = startCapture()
                     val imageSize = bitmap.rowBytes * bitmap.height
                     val uncompressedBuffer =
-                            ByteBuffer.allocateDirect(imageSize)
+                        ByteBuffer.allocateDirect(imageSize)
                     bitmap.copyPixelsToBuffer(uncompressedBuffer)
                     uncompressedBuffer.position(0)
                     var bb = ByteBuffer.allocate(xlen * ylen * 4)
@@ -628,7 +639,7 @@ open class thr : Thread() {
                         var startPos = xbegin + j * con_width
                         var endPos = xbegin + j * con_width + xlen
                         bb.put(
-                                uncompressedBuffer.array().sliceArray(startPos * 4 until endPos * 4)
+                            uncompressedBuffer.array().sliceArray(startPos * 4 until endPos * 4)
                         )
                     }
                     bb.flip()
@@ -778,30 +789,30 @@ class MainActivity : AppCompatActivity() {
             var xx = android.os.Build.VERSION.SDK_INT
             if (i == 1 && full_version && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 var con = AudioPlaybackCaptureConfiguration.Builder(g_med)
-                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                        .build();
+                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                    .build();
                 recorder = AudioRecord.Builder().setAudioPlaybackCaptureConfig(con).setAudioFormat(
-                        AudioFormat.Builder()
-                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                .setSampleRate(RECORDER_SAMPLERATE)
-                                .setChannelMask(RECORDER_CHANNELS)
-                                .build()
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RECORDER_SAMPLERATE)
+                        .setChannelMask(RECORDER_CHANNELS)
+                        .build()
                 )
-                        .setBufferSizeInBytes(recordSize * 4)
-                        .build();
+                    .setBufferSizeInBytes(recordSize * 4)
+                    .build();
             } else {
                 recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC)
-                        .setAudioFormat(
-                                AudioFormat.Builder()
-                                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                        .setSampleRate(RECORDER_SAMPLERATE)
-                                        .setChannelMask(RECORDER_CHANNELS)
-                                        .build()
-                        )
-                        .setBufferSizeInBytes(recordSize * 4)
-                        .build();
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(RECORDER_SAMPLERATE)
+                            .setChannelMask(RECORDER_CHANNELS)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(recordSize * 4)
+                    .build();
             }
 
             recorder.startRecording();
@@ -898,29 +909,29 @@ class MainActivity : AppCompatActivity() {
 
     fun play() {
         var i =
-                findViewById<SeekBar>(R.id.seekBar).progress.toFloat() * 3 / findViewById<SeekBar>(R.id.seekBar).max.toFloat()
+            findViewById<SeekBar>(R.id.seekBar).progress.toFloat() * 3 / findViewById<SeekBar>(R.id.seekBar).max.toFloat()
         i += 0.1.toFloat()
 
         var minsize = AudioTrack.getMinBufferSize(
-                (44100 * i).toInt(),
-                AudioFormat.CHANNEL_OUT_STEREO,
-                AudioFormat.ENCODING_PCM_16BIT
+            (44100 * i).toInt(),
+            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
         )
         var buffersize = playSize * 4
         if (buffersize < minsize)
             buffersize = minsize
 
         audio = AudioTrack(
-                AudioManager.STREAM_MUSIC,
-                (44100 * i).toInt(), //sample rate
-                AudioFormat.CHANNEL_OUT_STEREO, //2 channel
-                AudioFormat.ENCODING_PCM_16BIT, // 16-bit
-                buffersize,
-                AudioTrack.MODE_STREAM
+            AudioManager.STREAM_MUSIC,
+            (44100 * i).toInt(), //sample rate
+            AudioFormat.CHANNEL_OUT_STEREO, //2 channel
+            AudioFormat.ENCODING_PCM_16BIT, // 16-bit
+            buffersize,
+            AudioTrack.MODE_STREAM
         );
         audio.play()
         var j =
-                findViewById<SeekBar>(R.id.seekBar2).progress.toFloat() / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
+            findViewById<SeekBar>(R.id.seekBar2).progress.toFloat() / findViewById<SeekBar>(R.id.seekBar2).max.toFloat()
         if (fftStr.contains("-")) {
             var tt = Thread(Runnable { doPlay2(j); })
             tt.start()
@@ -982,7 +993,7 @@ class MainActivity : AppCompatActivity() {
     fun dealCha(met: (i: Short) -> Int) {
         if (cat) {
             soundData[findViewById<SeekBar>(R.id.seekBar3).progress] =
-                    floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
+                floorV(met(soundData[findViewById<SeekBar>(R.id.seekBar3).progress]))
             showVal()
             return
         }
@@ -1080,7 +1091,7 @@ class MainActivity : AppCompatActivity() {
             if (fixed) {
                 findViewById<Button>(R.id.fixbtn).setText("f")
                 fixV =
-                        findViewById<SeekBar>(R.id.seekBar3).progress - findViewById<SeekBar>(R.id.seekBar4).progress
+                    findViewById<SeekBar>(R.id.seekBar3).progress - findViewById<SeekBar>(R.id.seekBar4).progress
             } else
                 findViewById<Button>(R.id.fixbtn).setText("n")
         }
@@ -1116,38 +1127,38 @@ class MainActivity : AppCompatActivity() {
             true
         }
         findViewById<Button>(R.id.jianyi).setOnTouchListener(
-                RepeatListener(400, 30,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                dealCha { it - 1 }
-                            }
-                        })
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it - 1 }
+                    }
+                })
         )
 
         findViewById<Button>(R.id.jiayi).setOnTouchListener(
-                RepeatListener(400, 30,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                dealCha { it + 1 }
-                            }
-                        })
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it + 1 }
+                    }
+                })
         )
 
         findViewById<Button>(R.id.jiaershi).setOnTouchListener(
-                RepeatListener(400, 10,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                dealCha { it + 100 }
-                            }
-                        })
+            RepeatListener(400, 10,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it + 100 }
+                    }
+                })
         )
         findViewById<Button>(R.id.jianershi).setOnTouchListener(
-                RepeatListener(400, 10,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                dealCha { it - 100 }
-                            }
-                        })
+            RepeatListener(400, 10,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        dealCha { it - 100 }
+                    }
+                })
         )
         findViewById<Button>(R.id.rebtn).setOnClickListener {
             soundData = soundData_b.copyOf()
@@ -1182,11 +1193,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<SeekBar>(R.id.seekBar).max = 100
         findViewById<SeekBar>(R.id.seekBar).progress = 30
         findViewById<SeekBar>(R.id.seekBar).setOnSeekBarChangeListener(object :
-                SeekBar.OnSeekBarChangeListener {
+            SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 findViewById<TextView>(R.id.seekBarText).setText(progress.toString())
             }
@@ -1196,11 +1207,11 @@ class MainActivity : AppCompatActivity() {
         })
         findViewById<SeekBar>(R.id.seekBar2).max = 100
         findViewById<SeekBar>(R.id.seekBar2).setOnSeekBarChangeListener(object :
-                SeekBar.OnSeekBarChangeListener {
+            SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 findViewById<TextView>(R.id.seekBarText2).setText(progress.toString())
             }
@@ -1209,11 +1220,11 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
         findViewById<SeekBar>(R.id.seekBar3).setOnSeekBarChangeListener(object :
-                SeekBar.OnSeekBarChangeListener {
+            SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 if (fromUser) {
                     fixed = false
@@ -1228,11 +1239,11 @@ class MainActivity : AppCompatActivity() {
         })
         findViewById<SeekBar>(R.id.seekBar4).max = 2500
         findViewById<SeekBar>(R.id.seekBar4).setOnSeekBarChangeListener(object :
-                SeekBar.OnSeekBarChangeListener {
+            SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
+                seekBar: SeekBar,
+                progress: Int,
+                fromUser: Boolean
             ) {
                 //     findViewById<TextView>(R.id.seekBarText4).setText(progress.toString())
                 if (fixed) {
@@ -1245,24 +1256,24 @@ class MainActivity : AppCompatActivity() {
         })
 
         findViewById<Button>(R.id.bigjianbtn).setOnTouchListener(
-                RepeatListener(400, 30,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
-                            }
-                        })
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress - 1)
+                    }
+                })
         )
         findViewById<Button>(R.id.bigjiabtn).setOnTouchListener(
-                RepeatListener(400, 30,
-                        object : View.OnClickListener {
-                            override fun onClick(view: View?) {
-                                findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
-                            }
-                        })
+            RepeatListener(400, 30,
+                object : View.OnClickListener {
+                    override fun onClick(view: View?) {
+                        findViewById<SeekBar>(R.id.seekBar4).setProgress(findViewById<SeekBar>(R.id.seekBar4).progress + 1)
+                    }
+                })
         )
         if (full_version) {
             var projectionManager =
-                    getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             startActivityForResult(projectionManager.createScreenCaptureIntent(), 1)
         }
 
