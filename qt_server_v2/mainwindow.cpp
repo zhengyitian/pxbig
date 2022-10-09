@@ -1,12 +1,11 @@
 #include "mainwindow.h"
-void delay_noblock( int millisecondsToWait )
-{
-    QTime dieTime = QTime::currentTime().addMSecs( millisecondsToWait );
-    while( QTime::currentTime() < dieTime )
-    {
-        QCoreApplication::processEvents( QEventLoop::AllEvents, 100 );
-    }
-}
 
+int timeout_limit = 8000;
+int gap = 200;
+int x_gap = 0;
+int y_gap = 0;
+int sendco = 0;
 
-
+QMutex mutex;
+QMap<QString,QByteArray> record_map;
+QMap<QString,qint64> lastsend_time;

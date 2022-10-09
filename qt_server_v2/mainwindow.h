@@ -22,72 +22,25 @@
 #include "qlineedit.h"
 #include "qlabel.h"
 #include "QTimer"
+#include "QThread"
 
-void delay_noblock( int millisecondsToWait );
 
-class MainWindow : public QWidget
-{
+extern int timeout_limit;
+extern int gap ;
+extern int x_gap ;
+extern int y_gap;
+extern int sendco;
+extern QMutex mutex;
+extern QMap<QString,QByteArray> record_map;
+extern QMap<QString,qint64> lastsend_time;
+
+class Worker : public QObject {
     Q_OBJECT
+
 public:
-    QMutex mutex;
-    QMap<QString,QByteArray> record_map;
-    QMap<QString,qint64> lastsend_time;
-    QTcpServer* server = new QTcpServer(this);
-    int timeout_limit = 8000;
-    int gap = 200;
-    int x_gap = 0;
-    int y_gap = 0;
-    QLineEdit* l1;
-    QLineEdit* l2;
-    QLineEdit* l3;
-    QLineEdit* l4;
-    QLineEdit* l5;
-    int sendco = 0;
-
-    explicit MainWindow(QWidget *parent = nullptr)
-    {
-
-        QTimer *timer = new QTimer(this);
-        connect(timer, SIGNAL(timeout()), this,SLOT(ontimer()) );
-        timer->start(1000);
-
-        server->listen(QHostAddress::Any, 8899);
-        connect(server, SIGNAL(newConnection()), SLOT(newConnection()));
-
-        QVBoxLayout *v = new QVBoxLayout();
-        QHBoxLayout *h = new QHBoxLayout();
-        QHBoxLayout *h2 = new QHBoxLayout();
-        auto la1 = new QLabel("x_gap");
-        l1 = new QLineEdit("0");
-        h->addWidget(la1);
-        h->addWidget(l1);
-
-        auto la2 = new QLabel("y_gap");
-        l2 = new QLineEdit("0");
-        h->addWidget(la2);
-        h->addWidget(l2);
-
-        auto la3 = new QLabel("interval(ms)");
-        l3 = new QLineEdit("200");
-        h2->addWidget(la3);
-        h2->addWidget(l3);
-
-        auto la4 = new QLabel("timeout(ms)");
-        l4 = new QLineEdit(QString::number( timeout_limit));
-        h2->addWidget(la4);
-        h2->addWidget(l4);
-
-        auto qb = new QPushButton("set");
-        connect(qb, SIGNAL(clicked()), this, SLOT(onCli()));
-        v->addLayout(h);
-        v->addLayout(h2);
-        v->addWidget(qb);
-        l5 = new QLineEdit("0");
-        v->addWidget(l5);
-        this->setLayout(v);
-
-    }
-
+    Worker(){}
+    ~Worker(){}
+    qintptr socketDescriptor;
     void get_pic( int xs,int ys,int xl,int yl,QByteArray &re)
     {
         QScreen *screen  =  QGuiApplication::primaryScreen();
@@ -110,23 +63,12 @@ public:
     }
 
 public slots:
-    void ontimer()
-    {
-        l5->setText(QString::number(sendco));
-    }
-    void onCli()
-    {
-        x_gap =  l1->text().toInt();
-        y_gap =  l2->text().toInt();
-        gap =  l3->text().toInt();
-        timeout_limit =  l4->text().toInt();
-
-    }
-    void newConnection()
+    void process()
     {
         static int co=0;
         co++;
-        QTcpSocket *   socket = server->nextPendingConnection();
+        QTcpSocket *   socket = new QTcpSocket();
+        socket -> setSocketDescriptor(socketDescriptor);
         socket->waitForReadyRead(10000);
         auto a = socket->readAll();
         qDebug()<<co<<"read:"<<a.size()<<QDateTime::currentMSecsSinceEpoch();
@@ -181,7 +123,7 @@ public slots:
                 break;
             }
             mutex.unlock();
-                delay_noblock(10);
+
             socket->waitForReadyRead(100);
             waitco ++;
             if(waitco>timeout_limit/100)
@@ -198,7 +140,6 @@ public slots:
         if(sleepms>0)
         {
             socket->waitForReadyRead(sleepms);
-             delay_noblock(10);
         }
 
 
@@ -220,7 +161,119 @@ public slots:
         socket->close();
         socket->deleteLater();
         socket = nullptr;
+        emit finished();
     }
+
+signals:
+    void finished();
+    void error(QString err);
+
+private:
+    // add your variables here
+};
+
+class FortuneServer : public QTcpServer
+{
+    Q_OBJECT
+
+public:
+    FortuneServer(QObject *parent = nullptr){}
+public slots:
+    void errorString(QString a)
+    {
+        qDebug()<<a;
+    }
+protected:
+    void incomingConnection(qintptr socketDescriptor) override
+    {
+        qDebug()<<"get conn";
+        QThread* thread = new QThread;
+        Worker* worker = new Worker();
+        worker->socketDescriptor = socketDescriptor;
+        worker->moveToThread(thread);
+        connect(worker, SIGNAL(error(QString)), this, SLOT(errorString(QString)));
+        connect(thread, SIGNAL(started()), worker, SLOT(process()));
+        connect(worker, SIGNAL(finished()), thread, SLOT(quit()));
+        connect(worker, SIGNAL(finished()), worker, SLOT(deleteLater()));
+        connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+        thread->start();
+    }
+
+private:
+    QStringList fortunes;
+};
+
+class MainWindow : public QWidget
+{
+    Q_OBJECT
+public:
+
+    FortuneServer* server = new FortuneServer(this);
+    QLineEdit* l1;
+    QLineEdit* l2;
+    QLineEdit* l3;
+    QLineEdit* l4;
+    QLineEdit* l5;
+
+
+    explicit MainWindow(QWidget *parent = nullptr)
+    {
+
+        QTimer *timer = new QTimer(this);
+        connect(timer, SIGNAL(timeout()), this,SLOT(ontimer()) );
+        timer->start(1000);
+
+        server->listen(QHostAddress::Any, 8899);
+        //  connect(server, SIGNAL(newConnection()), SLOT(newConnection()));
+
+        QVBoxLayout *v = new QVBoxLayout();
+        QHBoxLayout *h = new QHBoxLayout();
+        QHBoxLayout *h2 = new QHBoxLayout();
+        auto la1 = new QLabel("x_gap");
+        l1 = new QLineEdit("0");
+        h->addWidget(la1);
+        h->addWidget(l1);
+
+        auto la2 = new QLabel("y_gap");
+        l2 = new QLineEdit("0");
+        h->addWidget(la2);
+        h->addWidget(l2);
+
+        auto la3 = new QLabel("interval(ms)");
+        l3 = new QLineEdit(QString::number( gap));
+        h2->addWidget(la3);
+        h2->addWidget(l3);
+
+        auto la4 = new QLabel("timeout(ms)");
+        l4 = new QLineEdit(QString::number( timeout_limit));
+        h2->addWidget(la4);
+        h2->addWidget(l4);
+
+        auto qb = new QPushButton("set");
+        connect(qb, SIGNAL(clicked()), this, SLOT(onCli()));
+        v->addLayout(h);
+        v->addLayout(h2);
+        v->addWidget(qb);
+        l5 = new QLineEdit("0");
+        v->addWidget(l5);
+        this->setLayout(v);
+
+    }
+
+public slots:
+    void ontimer()
+    {
+        l5->setText(QString::number(sendco));
+    }
+    void onCli()
+    {
+        x_gap =  l1->text().toInt();
+        y_gap =  l2->text().toInt();
+        gap =  l3->text().toInt();
+        timeout_limit =  l4->text().toInt();
+
+    }
+
 };
 
 #endif
