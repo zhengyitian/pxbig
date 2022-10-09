@@ -181,7 +181,8 @@ public slots:
                 break;
             }
             mutex.unlock();
-            delay_noblock(100);
+            //    delay_noblock(100);
+            socket->waitForReadyRead(100);
             waitco ++;
             if(waitco>timeout_limit/100)
             {
@@ -196,7 +197,8 @@ public slots:
 
         if(sleepms>0)
         {
-            delay_noblock(sleepms);
+            socket->waitForReadyRead(sleepms);
+            // delay_noblock(sleepms);
         }
 
 
