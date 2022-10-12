@@ -9,7 +9,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
 CHUNK = 512*2
-index = 2
+index = 1
 
 def one():
     a,b = so.accept()

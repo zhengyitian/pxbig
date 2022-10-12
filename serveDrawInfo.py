@@ -2,6 +2,8 @@ import socket
 import struct
 
 saveDir = '/home/a/drawinfo/'
+saveDir = 'c:/drawinfo/'
+
 import os
 l = os.listdir(saveDir)
 print(l)
