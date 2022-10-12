@@ -50,9 +50,9 @@ var full_version = true
 //samsung 5c 1920 1920
 //redmi note9 2340
 //samsung a9 star 2220
-
+//honor x30 2388
 var con_width = 2388
-var con_height = 2388
+var con_height = con_width
 
 //end of config
 
@@ -675,6 +675,7 @@ open class thr : Thread() {
                         co += cli.write(bb)
                     }
                     selector.close()
+                    Thread.sleep(100)
                     cli.close()
                 } else {
                     cli.close()
