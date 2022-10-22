@@ -31,10 +31,10 @@ import java.util.zip.Inflater
 //redmi 8a 700
 
 var maxX = 700
-var maxY = 700
+var maxY = maxX
 
 //picture maxSize got from server
-var showLen = 700
+var showLen = maxX
 
 
 //end of config
@@ -117,13 +117,16 @@ class RepeatListener(
     }
 }
 
+var do_recv = false;
+
 class recvThr : Thread() {
     var ip = ""
     lateinit var path: File
     var ipR = ""
-    var ip2 = "127.0.0.1"
-
     fun w() {
+        if (!do_recv) {
+            throw java.lang.Exception()
+        }
         var add = InetSocketAddress(ipR, 8898)
         var so = SocketChannel.open()
         try {
@@ -159,11 +162,8 @@ class recvThr : Thread() {
             try {
                 w()
             } catch (e: java.lang.Exception) {
+                println("recv err")
                 Thread.sleep(1000)
-                if (ipR == ip)
-                    ipR = ip2
-                else
-                    ipR = ip
             }
         }
     }
@@ -610,6 +610,7 @@ class MainActivity : AppCompatActivity() {
         tt.ip = findViewById<EditText>(R.id.ip).text.toString()
         tt.path = baseContext.filesDir
         tt.start()
+
         findViewById<Button>(R.id.pauseBtn).setOnLongClickListener {
             pause = true
             stepMode = !stepMode
@@ -761,6 +762,17 @@ class MainActivity : AppCompatActivity() {
             g_sleep = findViewById<EditText>(R.id.yCapLen).text.toString().toInt()
         }
 
+
+        findViewById<Button>(R.id.button).setOnLongClickListener {
+            if (do_recv) {
+                do_recv = false;
+                findViewById<Button>(R.id.button).setText("nor")
+            } else {
+                do_recv = true;
+                findViewById<Button>(R.id.button).setText("rec")
+            }
+            true
+        }
         findViewById<Button>(R.id.button).setOnClickListener {
             if (hasStart) {
                 System.exit(0)

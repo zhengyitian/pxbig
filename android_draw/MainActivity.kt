@@ -15,21 +15,21 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.ServerSocketChannel
+
 //config before compile
 var coX = 10
 var coY = 30
 var boxLen = 60 // draw box length
 var wiLen = 30 // space between widgets
 var wiHei = 120 //widget height
-var leftM = coX* boxLen+50
+var leftM = coX * boxLen + 50
 //end of config
 var g_port = 8898
 
 class thrC2 : Thread() {
     lateinit var upper: MainActivity
     lateinit var path: File
-    fun writeFile(i: Int,b:ByteArray)
-    {
+    fun writeFile(i: Int, b: ByteArray) {
         try {
             var file: File = File(path, i.toString())
             val f = FileOutputStream(file)
@@ -46,30 +46,27 @@ class thrC2 : Thread() {
         var add = InetSocketAddress("0.0.0.0", g_port)
         s.socket().bind(add)
 
-        while (true)
-        {
+        while (true) {
             var so = s.accept()
             var aa = ByteBuffer.allocate(4)
             aa.order(ByteOrder.LITTLE_ENDIAN)
             so.read(aa)
             aa.flip()
             var l = aa.getInt()
-            if(l>300)
-            {
+            if (l > 300) {
                 so.close()
                 break
             }
             aa = ByteBuffer.allocate(10000)
-            var le=0;
-            while(true)
-            {
-                var r =  so.read(aa)
-                if(r<=0)
+            var le = 0;
+            while (true) {
+                var r = so.read(aa)
+                if (r <= 0)
                     break
-                le+=r
+                le += r
             }
             so.close()
-            writeFile(l,aa.array().sliceArray(0 until le))
+            writeFile(l, aa.array().sliceArray(0 until le))
             upper.runOnUiThread { upper.serCha(l) }
         }
         s.close()
@@ -112,6 +109,7 @@ class thrC : Thread() {
             so.write(aa)
             var bb = ByteBuffer.wrap(b)
             so.write(bb)
+            Thread.sleep(100)
             so.close()
         }
         s.close()
@@ -250,7 +248,7 @@ class MainActivity : AppCompatActivity() {
         addui(numText, 200, wiHei)
         setBtn = Button(this)
         setBtn.setText("save")
-        addui(setBtn, 200,wiHei )
+        addui(setBtn, 200, wiHei)
         setBtn.setOnClickListener {
             if (coMap.size == 0)
                 return@setOnClickListener

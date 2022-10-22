@@ -1,12 +1,12 @@
 import socket
 import struct
 
-saveDir = 'e:/drawinfo/'
-saveDir = '/home/a/drawinfo2/'
+saveDir = 'c:/drawinfo/'
+#saveDir = '/home/a/drawinfo2/'
 import os
 l = os.listdir(saveDir)
 print(l)
-add = ('192.168.0.104',8898)
+add = ('192.168.1.43',8898)
 
 
 def ser(i,ff):    
@@ -20,6 +20,8 @@ def ser(i,ff):
     a.close()
 
 for i in range(300):
+    if i == 60:
+        d = 1
     ff = str(i)+'.txt'
     if ff in l:
         ser(i,saveDir+ff)
