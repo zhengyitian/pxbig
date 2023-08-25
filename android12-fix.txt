@@ -1,4 +1,6 @@
- <activity android:name=".MainActivity"
+1.加android:exported="true"
+位置如下：
+<activity android:name=".MainActivity"
         android:screenOrientation="portrait"
         android:exported="true">
         <intent-filter>
@@ -7,11 +9,12 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
     </activity>
-
-加android:exported="true"
-
-service  在myServ.kt 文件
+2.  android:theme="@style/Theme.Cap_scr"> 可能需要修改成类似。
+3.加 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+4.service  相关 做如下改动
  val pendingIntent = PendingIntent.getActivity(
             this,
             0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
         )
+在myServ.kt 文件
+5.double toshort 可能需要先 toint
