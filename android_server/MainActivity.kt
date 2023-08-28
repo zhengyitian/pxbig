@@ -51,7 +51,7 @@ var full_version = true
 //redmi note9 2340
 //samsung a9 star 2220
 //honor x30 2388
-var con_width = 2388
+var con_width = 2560
 var con_height = con_width
 
 //end of config
@@ -94,6 +94,7 @@ class RepeatListener(
                 clickListener.onClick(view)
                 return true
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(handlerRunnable)
                 touchedView?.setPressed(false)
@@ -622,6 +623,10 @@ open class thr : Thread() {
                 var rr = cli.read(jj)
 
                 if (rr == 16) {
+                    upper.runOnUiThread {
+                        upper.request_add()
+                    }
+
                     jj.flip()
                     jj.order(ByteOrder.LITTLE_ENDIAN)
                     var xbegin = jj.getInt()
@@ -696,7 +701,7 @@ fun double2short(aa: Double): Short {
     else if (aa <= Short.MIN_VALUE)
         return Short.MIN_VALUE
     else
-        return aa.toShort()
+        return aa.toInt().toShort()
 }
 
 class MainActivity : AppCompatActivity() {
@@ -719,6 +724,7 @@ class MainActivity : AppCompatActivity() {
     var lastUpTime = System.currentTimeMillis()
     var addm = true
     var fftStr = ""
+    var request_co = 0
 
     fun saveText() {
         var path: File = baseContext.filesDir
@@ -1120,11 +1126,11 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.button).setOnClickListener { q() }
         findViewById<Button>(R.id.button).setOnLongClickListener {
-            g_on = !g_on
-            if (g_on)
-                findViewById<Button>(R.id.button).setText("q_on")
-            else
-                findViewById<Button>(R.id.button).setText("q_off")
+            /*   g_on = !g_on
+               if (g_on)
+                   findViewById<Button>(R.id.button).setText("q_on")
+               else
+                   findViewById<Button>(R.id.button).setText("q_off")*/
             true
         }
         findViewById<Button>(R.id.jianyi).setOnTouchListener(
@@ -1289,6 +1295,11 @@ class MainActivity : AppCompatActivity() {
         dataLen_b = dataLen
         findViewById<SeekBar>(R.id.seekBar3).max = dataLen
         isRecording = false
+    }
+
+    fun request_add() {
+        request_co += 1
+        findViewById<Button>(R.id.button).setText(request_co.toString())
     }
 
 }
